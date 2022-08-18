@@ -67,15 +67,19 @@ func (st *Topic) UpSheet(sheetTitle, centralTopicTitle string, structureClass ..
 
 // On 根据主题ID切换主题地址
 //  param
-//    componentId: 主题ID,为空时切换到中心主题
+//    componentId: 主题ID,不传时切换到中心主题
 //  return
 //    *Topic: 匹配主题地址
-func (st *Topic) On(componentId TopicID) *Topic {
+func (st *Topic) On(componentId ...TopicID) *Topic {
 	if st == nil {
 		return st
 	}
+	cid := centKey
+	if len(componentId) > 0 {
+		cid = componentId[0]
+	}
 
-	topic, ok := st.resources[componentId]
+	topic, ok := st.resources[cid]
 	if ok {
 		st.resources[lastKey] = topic
 		return topic
@@ -129,7 +133,7 @@ const (
 //    *Topic: 当前主题地址
 func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 	if st == nil || st.parent == nil {
-		return st // 父节点为nil,当前节点是根节点sheet信息,不支持添加子主题
+		return st // 父节点为nil时当前节点是根节点sheet信息,不支持添加子主题
 	}
 
 	if title == "" {

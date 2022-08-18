@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -216,44 +217,69 @@ func SaveSheets(path string, sheet ...*Topic) error {
 	return (&WorkBook{Topics: sheet}).Save(path)
 }
 
-// SaveCustom 自定义字段,生成json文件,写入流里面
-func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, w io.Writer) error {
+// SaveCustom 自定义字段,将数据写入指定对象中
+//  param
+//    sheet: xmind的sheet数据
+//    idKey: 以该json tag字段作为主题ID
+//    titleKey: 以该json tag字段作为主题内容
+//    parentKey: 以该json tag字段作为判断父节点的依据
+//    v: 可以为 *string,*[]byte,[]Nodes 这几种类型
+//  return
+//    error: 返回错误
+func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) (err error) {
 	cent := sheet.On(centKey)
 	if cent == nil {
 		return errors.New("RootTopic is null")
 	}
 
-	// 设置中心主题信息
-	_, err := fmt.Fprintf(w, `[{"%s":"%s","%s":"%s"}`,
-		idKey, cent.ID, titleKey, cent.Title)
-	if err != nil {
-		return err
-	}
+	// 使用 strconv.AppendQuote 预防字符串中包含'\n','\"'之类的转义字符
+	var buf strings.Builder
+	quote := make([]byte, 0, 128) // 复用缓存
+	buf.WriteString("[{")
+	buf.Write(strconv.AppendQuote(quote[:0], idKey))
+	buf.WriteByte(':')
+	buf.Write(strconv.AppendQuote(quote[:0], string(cent.ID)))
+	buf.WriteByte(',')
+	buf.Write(strconv.AppendQuote(quote[:0], titleKey))
+	buf.WriteByte(':')
+	buf.Write(strconv.AppendQuote(quote[:0], cent.Title))
+	buf.WriteByte('}')
+	// 以上数据为中心主题节点
 
-	var ll func(topic *Topic) error
-	ll = func(topic *Topic) error {
+	// 通过递归依次写入所有子节点数据
+	var loop func(topic *Topic)
+	loop = func(topic *Topic) {
 		if topic != nil && topic.Children != nil {
-			for _, t := range topic.Children.Attached {
-				_, err := fmt.Fprintf(w, `,{"%s":"%s","%s":"%s","%s":"%s"}`,
-					idKey, t.ID, titleKey, t.Title, parentKey, t.parent.ID)
-				if err != nil {
-					return err
-				}
-				err = ll(t)
-				if err != nil {
-					return err
-				}
+			for _, tp := range topic.Children.Attached {
+				buf.WriteString(",{")
+				buf.Write(strconv.AppendQuote(quote[:0], idKey))
+				buf.WriteByte(':')
+				buf.Write(strconv.AppendQuote(quote[:0], string(tp.ID)))
+				buf.WriteByte(',')
+				buf.Write(strconv.AppendQuote(quote[:0], titleKey))
+				buf.WriteByte(':')
+				buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
+				buf.WriteByte(',')
+				buf.Write(strconv.AppendQuote(quote[:0], parentKey))
+				buf.WriteByte(':')
+				buf.Write(strconv.AppendQuote(quote[:0], string(tp.parent.ID)))
+				buf.WriteByte('}')
+				loop(tp)
 			}
 		}
-		return nil
 	}
-	err = ll(cent)
-	if err != nil {
-		return err
+	loop(cent)
+	buf.WriteByte(']')
+	str := buf.String()
+
+	// 根据不同类型设置数据
+	switch vt := v.(type) {
+	case *string:
+		*vt = str
+	case *[]byte:
+		*vt = []byte(str)
+	default:
+		err = json.Unmarshal([]byte(str), v)
 	}
-	_, err = w.Write([]byte("]"))
-	if err != nil {
-		return err
-	}
-	return nil
+	return
 }
