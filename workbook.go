@@ -18,12 +18,12 @@ import (
 // 当文件为
 //    *.xmind 时会尝试读取压缩包的[content.json,content.xml]文件
 //    *.*     时会直接按照[*.json,*.xml]这几种格式读取
+//goland:noinspection GoUnhandledErrorResult
 func LoadFile(path string) (*WorkBook, error) {
 	fr, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	//goland:noinspection GoUnhandledErrorResult
 	defer fr.Close()
 
 	fi, err := fr.Stat()
@@ -46,7 +46,7 @@ func LoadFile(path string) (*WorkBook, error) {
 			topic.RootTopic.parent = topic
 			topic.RootTopic.resources = map[TopicID]*Topic{
 				rootKey: topic,
-				centKey: topic.RootTopic,
+				CentKey: topic.RootTopic,
 				lastKey: topic.RootTopic,
 			}
 			topic.resources = topic.RootTopic.resources
@@ -61,6 +61,7 @@ func LoadFile(path string) (*WorkBook, error) {
 	if err == nil {
 		rz, err := zr.Open(ContentJson)
 		if err == nil {
+			defer rz.Close()
 			err = json.NewDecoder(rz).Decode(&wb.Topics)
 			if err == nil {
 				return &wb, nil // 尝试读取zip中的content.json文件成功
@@ -68,6 +69,7 @@ func LoadFile(path string) (*WorkBook, error) {
 		}
 		rz, err = zr.Open(ContentXml)
 		if err == nil {
+			defer rz.Close()
 			err = xml.NewDecoder(rz).Decode(&wb)
 			if err == nil {
 				return &wb, nil // 尝试读取zip中的content.xml文件成功
@@ -102,12 +104,12 @@ func LoadFile(path string) (*WorkBook, error) {
 //    data:
 //      方式1:
 //        使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
-//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentid")
+//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentId")
 //        测试如下结构
 //        type Nodes struct {
 //           ID       string `json:"id"`
 //           Topic    string `json:"topic"`
-//           Parentid string `json:"parentid"`
+//           ParentId string `json:"parentId"`
 //        }
 //      方式2:
 //        传json string: `[{"root","top"},{"123","one","root"}]`
@@ -169,7 +171,7 @@ func LoadCustom(data interface{}, idKey, titleKey, parentKey string) (sheet *Top
 
 		if parentId == "" { // 中心主题父节点id为空
 			sheet = NewSheet("sheet", title)
-			idMap[id] = centKey // 建立中心主题ID映射关系
+			idMap[id] = CentKey // 建立中心主题ID映射关系
 		} else {
 			last := sheet.On(idMap[parentId]).Add(title).Children.Attached
 			// 将刚才添加的子主题ID建立映射关系,刚添加的子主题一定是最后一个
@@ -235,7 +237,7 @@ func SaveSheets(path string, sheet ...*Topic) error {
 //  return
 //    error: 返回错误
 func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) (err error) {
-	cent := sheet.On(centKey)
+	cent := sheet.On(CentKey)
 	if cent == nil {
 		return errors.New("RootTopic is null")
 	}

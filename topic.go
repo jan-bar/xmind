@@ -6,7 +6,7 @@ import (
 
 const (
 	rootKey TopicID = "root" // 画布主题地址Key
-	centKey TopicID = ""     // 中心主题地址Key
+	CentKey TopicID = ""     // 中心主题地址Key,开放给调用者
 	lastKey TopicID = "last" // 最后一次编辑主题地址Key
 	incrKey TopicID = "incr" // 自增主题key
 )
@@ -38,7 +38,7 @@ func NewSheet(sheetTitle, centralTopicTitle string, structureClass ...StructureC
 	}
 	sheet.RootTopic.parent = sheet       // 赋值中心主题的父节点
 	resources[rootKey] = sheet           // 赋值根节点
-	resources[centKey] = sheet.RootTopic // 为空的key表示中心主题
+	resources[CentKey] = sheet.RootTopic // 为空的key表示中心主题
 	resources[lastKey] = sheet.RootTopic // 将中心主题赋值为最后编辑节点
 	incr := 0
 	resources[incrKey] = &Topic{incr: &incr} // 自增主题ID
@@ -74,7 +74,7 @@ func (st *Topic) On(componentId ...TopicID) *Topic {
 	if st == nil || st.resources == nil {
 		return st // 资源为空只可能是使用者直接使用 Topic 对象,尽量使用接口
 	}
-	cid := centKey
+	cid := CentKey
 	if len(componentId) > 0 {
 		cid = componentId[0]
 	}
@@ -156,7 +156,7 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 	tp.resources[id] = tp
 
 	// 添加子主题,当前节点为中心主题时不管啥选项都是添加子主题
-	if mode == SubMode || st == st.resources[centKey] {
+	if mode == SubMode || st == st.resources[CentKey] {
 		if st.Children == nil {
 			st.Children = &Children{Attached: []*Topic{tp}}
 		} else {
@@ -223,7 +223,7 @@ func (st *Topic) Remove(title string) *Topic {
 //    *Topic: 当前主题地址
 // 特别注意,删除主题成功会自动定位到中心主题上,如果需要切换需要显示使用 On 操作
 func (st *Topic) RemoveByID(componentId TopicID) *Topic {
-	if st == nil || componentId == centKey {
+	if st == nil || componentId == CentKey {
 		return st // 中心主题不允许删除
 	}
 
@@ -252,7 +252,7 @@ func (st *Topic) RemoveByID(componentId TopicID) *Topic {
 		topic.Children.Attached = topic.Children.Attached[:cur]
 	}
 	// 存在删除时,需要切换到中心主题上,避免在已删除节点执行后续逻辑
-	return st.On(centKey)
+	return st.On(CentKey)
 }
 
 // RemoveChildren 递归删除所有子节点
@@ -287,7 +287,7 @@ func (st *Topic) upChildren() {
 //    TopicID: 匹配title的主题ID,有多个相同title时只返回第一个匹配成功的结果
 func (st *Topic) CId(title string) TopicID {
 	if title == "" {
-		return centKey
+		return CentKey
 	}
 
 	if st != nil {
@@ -308,7 +308,7 @@ func (st *Topic) CId(title string) TopicID {
 //    res: 匹配到title的所有主题ID
 func (st *Topic) CIds(title string) (res []TopicID) {
 	if title == "" {
-		return []TopicID{centKey} // 默认返回一个中心主题
+		return []TopicID{CentKey} // 默认返回一个中心主题
 	}
 
 	if st != nil {
