@@ -2,10 +2,9 @@ package xmind
 
 import (
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/base32"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"sync/atomic"
 )
 
@@ -20,9 +19,9 @@ type (
 	}
 
 	Topic struct {
-		resources map[TopicID]*Topic // 记录所有主题,所有主题共用同一个
+		resources map[TopicID]*Topic // 记录所有主题的资源,所有主题共用同一个
 		parent    *Topic             // 父节点地址
-		incr      *int               // 只用于自增id,生成不重复得默认主题内容
+		incr      *int               // 只用于自增id,生成不重复的默认主题内容
 
 		ID             TopicID        `json:"id" xml:"id,attr"`
 		Title          string         `json:"title" xml:"title"`
@@ -75,23 +74,27 @@ const (
 	StructSpreadsheet         StructureClass = "org.xmind.ui.spreadsheet"          // 矩阵(行)
 	StructSpreadsheetColumn   StructureClass = "org.xmind.ui.spreadsheet.column"   // 矩阵(列)
 
-	TopicIdLen = 36 // 长度固定为36
+	TopicIdLen = 26 // id编码长度 = objectIDbase32.EncodedLen(16)
 )
 
-var objectIDCounter uint32
+//goland:noinspection SpellCheckingInspection
+var (
+	objectIDCounter uint32
+	objectIDbase32  = base32.NewEncoding("123456789abcdefghijklmnopqrstuvw").WithPadding(base32.NoPadding)
+)
 
 func GetId() TopicID {
-	id := make([]byte, 16)
-	_, _ = rand.Reader.Read(id)
+	id := make([]byte, 16+26)
+	_, _ = rand.Reader.Read(id[:16])
 	count := atomic.AddUint32(&objectIDCounter, 1)
 	for i := 0; i < 4; i++ {
 		if c := byte(count >> (i * 8)); c > 0 {
-			id[i] = c
+			id[8-i] = c
 		}
 	}
-	data := hex.EncodeToString(id)
-	return TopicID(fmt.Sprintf("%s-%s-%s-%s-%s",
-		data[:8], data[8:12], data[12:16], data[16:20], data[20:]))
+	// 16个随机字节(4位为自增id),确保不重复 -> 26个base32编码后字符
+	objectIDbase32.Encode(id[16:], id[:16])
+	return TopicID(id[16:])
 }
 
 func (t TopicID) MarshalJSON() ([]byte, error) {

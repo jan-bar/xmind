@@ -71,8 +71,8 @@ func (st *Topic) UpSheet(sheetTitle, centralTopicTitle string, structureClass ..
 //  return
 //    *Topic: 匹配主题地址
 func (st *Topic) On(componentId ...TopicID) *Topic {
-	if st == nil {
-		return st
+	if st == nil || st.resources == nil {
+		return st // 资源为空只可能是使用者直接使用 Topic 对象,尽量使用接口
 	}
 	cid := centKey
 	if len(componentId) > 0 {
@@ -133,7 +133,9 @@ const (
 //    *Topic: 当前主题地址
 func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 	if st == nil || st.parent == nil {
-		return st // 父节点为nil时当前节点是根节点sheet信息,不支持添加子主题
+		// 父节点为nil表示当前节点在root根节点,该节点不支持添加子主题
+		// 没有对外提供切换到根节点方法,除非外部直接使用 Topic 对象
+		return st
 	}
 
 	if title == "" {
@@ -173,7 +175,7 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 				tc.parent = tp // 所有该级子节点更新父节点指针
 			}
 		}
-		return st
+		return tp // 由于st,tp交换,所以这里返回tp,保证当前位置还是之前的定位
 	}
 
 	tp.parent = st.parent // 下面只有2种同级插入方式,更新该节点父节点信息

@@ -100,14 +100,18 @@ func LoadFile(path string) (*WorkBook, error) {
 // LoadCustom 根据符合要求的任意结构加载
 //  param
 //    data:
-//       使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
-//       LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentid")
-//       测试如下结构
-//       type Nodes struct {
-//          ID       string `json:"id"`
-//          Topic    string `json:"topic"`
-//          Parentid string `json:"parentid"`
-//       }
+//      方式1:
+//        使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
+//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentid")
+//        测试如下结构
+//        type Nodes struct {
+//           ID       string `json:"id"`
+//           Topic    string `json:"topic"`
+//           Parentid string `json:"parentid"`
+//        }
+//      方式2:
+//        传json string: `[{"root","top"},{"123","one","root"}]`
+//        传json []byte: []byte(`[{"root","top"},{"123","one","root"}]`)
 //    idKey: 以该json tag字段作为主题ID
 //    titleKey: 以该json tag字段作为主题内容
 //    parentKey: 以该json tag字段作为判断父节点的依据
@@ -115,49 +119,53 @@ func LoadFile(path string) (*WorkBook, error) {
 //    *Topic: 生成的主题地址
 //    error: 返回错误
 func LoadCustom(data interface{}, idKey, titleKey, parentKey string) (sheet *Topic, err error) {
-	vd := reflect.ValueOf(data)
-	switch vd.Kind() { // 传入结构必须是切片或者数组
-	case reflect.Slice, reflect.Array:
+	var byteData []byte
+	switch td := data.(type) {
+	case string:
+		byteData = []byte(td)
+	case []byte:
+		byteData = td
 	default:
-		err = errors.New("data is not Slice or Array")
+		byteData, err = json.Marshal(data)
+		if err != nil {
+			return
+		}
+	}
+
+	newStruct := func(name, tag string) reflect.StructField {
+		return reflect.StructField{
+			Name: name,
+			Type: reflect.TypeOf(""),
+			Tag:  reflect.StructTag(`json:"` + tag + `"`),
+		}
+	}
+	// 动态创建一个结构体,并new该结构体数组的对象
+	nodes := reflect.New(reflect.SliceOf(reflect.StructOf([]reflect.StructField{
+		newStruct("Id", idKey),
+		newStruct("Title", titleKey),
+		newStruct("ParentId", parentKey),
+	})))
+
+	// 通过json库将传入对象转换为动态生成的对象
+	err = json.Unmarshal(byteData, nodes.Interface())
+	if err != nil {
 		return
 	}
 
-	// 读入数据ID与创建的数据ID做映射
-	idMap := make(map[string]TopicID, vd.Len())
-	// 遍历切片或数组,读取每一个节点数据
-	for i := 0; i < vd.Len(); i++ {
-		val := vd.Index(i)
-		if val.Kind() != reflect.Struct { // 每个节点必须是结构体
-			err = errors.New("node not struct")
-			return
-		}
-
-		var id, title, parentId string
-		for vt, j := val.Type(), 0; j < vt.NumField(); j++ {
-			var tmp *string
-			tag := vt.Field(j).Tag.Get("json")
-			if it := strings.Index(tag, ","); it > 0 {
-				tag = tag[:it]
-			}
-			switch tag {
-			case idKey:
-				tmp = &id
-			case titleKey:
-				tmp = &title
-			case parentKey:
-				tmp = &parentId
-			}
-
-			if tmp != nil {
-				v := val.Field(j)
-				if v.Kind() != reflect.String {
-					err = fmt.Errorf("%s field kind not String", tag)
-					return
-				}
-				*tmp = v.String()
-			}
-		}
+	var (
+		// 获取指针的对象值,相当于 *Type
+		node    = nodes.Elem()
+		nodeLen = node.Len()
+		// 传入数据的ID和本次创建的ID建立映射关系,将第三方ID转换为这里生成的ID
+		idMap = make(map[string]TopicID, nodeLen)
+	)
+	for i := 0; i < nodeLen; i++ {
+		stu := node.Index(i)
+		// 遍历数组每个数据,得到需要的数据
+		// 动态创建结构三个字段index已知,用如下方法获取每个字段的数据
+		id := stu.Field(0).String()
+		title := stu.Field(1).String()
+		parentId := stu.Field(2).String()
 
 		if parentId == "" { // 中心主题父节点id为空
 			sheet = NewSheet("sheet", title)
@@ -223,7 +231,7 @@ func SaveSheets(path string, sheet ...*Topic) error {
 //    idKey: 以该json tag字段作为主题ID
 //    titleKey: 以该json tag字段作为主题内容
 //    parentKey: 以该json tag字段作为判断父节点的依据
-//    v: 可以为 *string,*[]byte,[]Nodes 这几种类型
+//    v: 可以为 *string,*[]byte,*[]Nodes{} 这几种类型
 //  return
 //    error: 返回错误
 func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) (err error) {
@@ -232,16 +240,16 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) 
 		return errors.New("RootTopic is null")
 	}
 
-	// 使用 strconv.AppendQuote 预防字符串中包含'\n','\"'之类的转义字符
 	var buf strings.Builder
-	quote := make([]byte, 0, 128) // 复用缓存
-	buf.WriteString("[{")
-	buf.Write(strconv.AppendQuote(quote[:0], idKey))
-	buf.WriteByte(':')
-	buf.Write(strconv.AppendQuote(quote[:0], string(cent.ID)))
-	buf.WriteByte(',')
-	buf.Write(strconv.AppendQuote(quote[:0], titleKey))
-	buf.WriteByte(':')
+	buf.WriteString(`[{"`)
+	buf.WriteString(idKey)
+	buf.WriteString(`":"`)
+	buf.WriteString(string(cent.ID))
+	buf.WriteString(`","`)
+	buf.WriteString(titleKey)
+	buf.WriteString(`":`)
+	quote := make([]byte, 0, 128)
+	// 主题内容可能出现'\n','\t'等特殊字符,需要安全的方法在两侧添加引号
 	buf.Write(strconv.AppendQuote(quote[:0], cent.Title))
 	buf.WriteByte('}')
 	// 以上数据为中心主题节点
@@ -251,19 +259,20 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) 
 	loop = func(topic *Topic) {
 		if topic != nil && topic.Children != nil {
 			for _, tp := range topic.Children.Attached {
-				buf.WriteString(",{")
-				buf.Write(strconv.AppendQuote(quote[:0], idKey))
-				buf.WriteByte(':')
-				buf.Write(strconv.AppendQuote(quote[:0], string(tp.ID)))
-				buf.WriteByte(',')
-				buf.Write(strconv.AppendQuote(quote[:0], titleKey))
-				buf.WriteByte(':')
+				buf.WriteString(`,{"`)
+				buf.WriteString(idKey)
+				buf.WriteString(`":"`)
+				buf.WriteString(string(tp.ID))
+				buf.WriteString(`","`)
+				buf.WriteString(titleKey)
+				buf.WriteString(`":`)
+				// 只有主题内容会出现特殊转义字符,需要特殊方式加引号
 				buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
-				buf.WriteByte(',')
-				buf.Write(strconv.AppendQuote(quote[:0], parentKey))
-				buf.WriteByte(':')
-				buf.Write(strconv.AppendQuote(quote[:0], string(tp.parent.ID)))
-				buf.WriteByte('}')
+				buf.WriteString(`,"`)
+				buf.WriteString(parentKey)
+				buf.WriteString(`":"`)
+				buf.WriteString(string(tp.parent.ID))
+				buf.WriteString(`"}`)
 				loop(tp)
 			}
 		}
