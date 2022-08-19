@@ -155,8 +155,8 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 	tp := &Topic{ID: id, Title: title, resources: st.resources, parent: st}
 	tp.resources[id] = tp
 
-	// 添加子主题
-	if mode == SubMode {
+	// 添加子主题,当前节点为中心主题时不管啥选项都是添加子主题
+	if mode == SubMode || st == st.resources[centKey] {
 		if st.Children == nil {
 			st.Children = &Children{Attached: []*Topic{tp}}
 		} else {
@@ -167,7 +167,7 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 
 	// 当前节点插入父主题
 	if mode == ParentMode {
-		st.Title, tp.Title = tp.Title, st.Title // 不用关系资源
+		st.Title, tp.Title = tp.Title, st.Title // 不用关心资源
 		tp.Children = st.Children
 		st.Children = &Children{Attached: []*Topic{tp}}
 		if tp.Children != nil && len(tp.Children.Attached) > 0 {
