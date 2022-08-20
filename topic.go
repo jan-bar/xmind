@@ -125,6 +125,16 @@ const (
 	ParentMode                // 为当前主题插入父主题
 )
 
+// In 判断 AddMode 不在范围内时重置为 SubMode
+func (am AddMode) In() AddMode {
+	for i := SubMode; i <= ParentMode; i++ {
+		if am == i {
+			return am
+		}
+	}
+	return SubMode
+}
+
 // Add 为当前主题添加主题
 //  param
 //    title: 主题内容
@@ -138,17 +148,17 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 		return st
 	}
 
+	mode := SubMode
+	if len(modes) > 0 {
+		mode = modes[0].In()
+	}
+
 	if title == "" {
 		id, ok := st.resources[incrKey]
 		if ok {
 			*id.incr++ // 增加空内容主题时,自动生成自增的主题内容,确保主题不重复
 			title = fmt.Sprintf("Topic %d", *id.incr)
 		}
-	}
-
-	mode := SubMode
-	if len(modes) > 0 {
-		mode = modes[0]
 	}
 
 	id := GetId()
@@ -175,7 +185,8 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 				tc.parent = tp // 所有该级子节点更新父节点指针
 			}
 		}
-		return tp // 由于st,tp交换,所以这里返回tp,保证当前位置还是之前的定位
+		// 由于st,tp交换,所以这里返回tp,保证当前位置还是之前的定位
+		return st.On(tp.ID)
 	}
 
 	tp.parent = st.parent // 下面只有2种同级插入方式,更新该节点父节点信息
@@ -199,8 +210,88 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 			}
 			tps[i], tps[i-1] = tps[i-1], tps[i]
 		}
+	}
+
+	st.parent.Children.Attached = tps
+	return st
+}
+
+// Move 将指定节点移动到当前节点对应位置
+//  param
+//    componentId: 要移动过来的节点
+//    modes: 移动过来的添加方式,不传则默认移动为最后一个子主题
+//  return
+//    *Topic: 当前主题地址
+func (st *Topic) Move(componentId TopicID, modes ...AddMode) *Topic {
+	if st == nil || st.parent == nil || !componentId.IsOrdinary() {
+		return st // 同 Add 根节点不支持操作,内部的特殊节点不支持移动操作
+	}
+
+	mode := SubMode
+	if len(modes) > 0 {
+		mode = modes[0].In()
+		if mode == ParentMode {
+			mode = SubMode // 移动方式不支持将节点移动为当前节点父节点
+		}
+	}
+
+	src, ok := st.resources[componentId]
+	if !ok {
+		return st // 找不到节点,无法移动
+	}
+	parent := src.parent
+	if parent == nil || parent.Children == nil || len(parent.Children.Attached) == 0 {
+		return st // 被移动节点没有父节点,或者父节点没有子节点(貌似没这情况,以防万一)
+	}
+	cur := 0
+	for i, tp := range parent.Children.Attached {
+		if tp.ID != src.ID {
+			parent.Children.Attached[cur] = parent.Children.Attached[i]
+			cur++ // 注意不能直接用tp赋值,range的坑
+		}
+	}
+	if cur == len(parent.Children.Attached) {
+		return st // 没有找到要移动的节点
+	}
+	// 在父节点的子节点中移除需要移动的节点
+	if cur == 0 {
+		parent.Children = nil
 	} else {
+		parent.Children.Attached = parent.Children.Attached[:cur]
+	}
+
+	// 添加子主题,当前节点为中心主题时不管啥选项都是移动到子主题
+	if mode == SubMode || st == st.resources[CentKey] {
+		src.parent = st // 更新被移动节点的父节点为当前节点
+		if st.Children == nil {
+			st.Children = &Children{Attached: []*Topic{src}}
+		} else {
+			st.Children.Attached = append(st.Children.Attached, src)
+		}
 		return st
+	}
+
+	src.parent = st.parent // 下面只有2种同级插入方式,更新该节点父节点信息
+	if st.parent.Children == nil {
+		st.parent.Children = &Children{Attached: []*Topic{src}}
+		return st // 应该没有这种情况,保险而已
+	}
+	tps := append(st.parent.Children.Attached, src)
+
+	if mode == BeforeMode {
+		for i := len(tps) - 1; i > 0; i-- {
+			tps[i], tps[i-1] = tps[i-1], tps[i]
+			if tps[i].ID == st.ID {
+				break // 当前节点前插入主题
+			}
+		}
+	} else if mode == AfterMode {
+		for i := len(tps) - 1; i > 0; i-- {
+			if tps[i-1].ID == st.ID {
+				break // 当前节点后插入主题
+			}
+			tps[i], tps[i-1] = tps[i-1], tps[i]
+		}
 	}
 
 	st.parent.Children.Attached = tps
@@ -223,8 +314,8 @@ func (st *Topic) Remove(title string) *Topic {
 //    *Topic: 当前主题地址
 // 特别注意,删除主题成功会自动定位到中心主题上,如果需要切换需要显示使用 On 操作
 func (st *Topic) RemoveByID(componentId TopicID) *Topic {
-	if st == nil || componentId == CentKey {
-		return st // 中心主题不允许删除
+	if st == nil || !componentId.IsOrdinary() {
+		return st // 特殊主题不允许删除
 	}
 
 	topic := st.Parent(componentId)
@@ -270,8 +361,8 @@ func (st *Topic) RemoveChildren() {
 func (st *Topic) upChildren() {
 	if st != nil && st.Children != nil {
 		for _, tp := range st.Children.Attached {
-			if tp.ID == "" {
-				tp.ID = GetId() // 避免没有ID时将 rootKey 覆盖
+			if !tp.ID.IsOrdinary() {
+				tp.ID = GetId() // 生成正常ID
 			}
 			st.resources[tp.ID] = tp
 			tp.parent, tp.resources = st, st.resources
@@ -293,7 +384,7 @@ func (st *Topic) CId(title string) TopicID {
 	if st != nil {
 		for id, topic := range st.resources {
 			// 由于range遍历乱序因此,不保证存在多个title时按照之前添加顺序返回
-			if len(id) == TopicIdLen && topic.Title == title {
+			if id.IsOrdinary() && topic.Title == title {
 				return id // 判断ID长度,剔除特殊ID
 			}
 		}
@@ -313,13 +404,59 @@ func (st *Topic) CIds(title string) (res []TopicID) {
 
 	if st != nil {
 		for id, topic := range st.resources {
-			if len(id) == TopicIdLen && topic.Title == title {
+			if id.IsOrdinary() && topic.Title == title {
 				res = append(res, id) // 判断ID长度,剔除特殊ID
 			}
 		}
 	}
 	if len(res) == 0 {
 		return []TopicID{lastKey} // 匹配不到返回最后编辑主题
+	}
+	return res
+}
+
+// IsCent 判断当前节点是中心主题
+//  return
+//    bool: true表示该节点为中心主题,否则为普通节点
+func (st *Topic) IsCent() bool {
+	return st != nil && st == st.resources[CentKey]
+}
+
+// Range 从当前节点递归遍历子节点
+//  param
+//    f: 外部的回调
+func (st *Topic) Range(f func(*Topic)) {
+	if st != nil {
+		var loop func(*Topic)
+		loop = func(tp *Topic) {
+			if tp != nil {
+				f(tp) // 通过回调函数让调用者实现自己的逻辑
+				if tp.Children != nil && len(tp.Children.Attached) > 0 {
+					for _, tc := range tp.Children.Attached {
+						loop(tc)
+					}
+				}
+			}
+		}
+		if st.RootTopic != nil {
+			loop(st.RootTopic) // 当前为根节点,从中心主题开始遍历
+		} else {
+			loop(st) // 其他情况从当前节点开始遍历
+		}
+	}
+}
+
+// Resources 返回所有主题的ID和内容资源
+//  return
+//    res: 返回所有主题ID和资源
+func (st *Topic) Resources() map[TopicID]string {
+	res := make(map[TopicID]string)
+	if st != nil {
+		for id, topic := range st.resources {
+			if id.IsOrdinary() {
+				res[id] = topic.Title // 只返回正常的节点资源
+			}
+		}
 	}
 	return res
 }

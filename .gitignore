@@ -15,3 +15,5 @@
 # vendor/
 .idea/
 *.xmind
+example/*.json
+*.tmp.*

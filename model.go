@@ -12,6 +12,7 @@ import (
 下面的结构支持从xml和json中解析xmind文件
 但只支持生成json的xmind文件,没有做直接生成xml文件的方法
 */
+//goland:noinspection SpellCheckingInspection
 type (
 	WorkBook struct {
 		XMLName xml.Name `xml:"xmap-content"`
@@ -73,8 +74,6 @@ const (
 	StructFishHoneRightHeaded StructureClass = "org.xmind.ui.fishbone.rightHeaded" // 鱼骨图(头向左)
 	StructSpreadsheet         StructureClass = "org.xmind.ui.spreadsheet"          // 矩阵(行)
 	StructSpreadsheetColumn   StructureClass = "org.xmind.ui.spreadsheet.column"   // 矩阵(列)
-
-	TopicIdLen = 26 // id编码长度 = objectIDbase32.EncodedLen(16)
 )
 
 //goland:noinspection SpellCheckingInspection
@@ -83,9 +82,12 @@ var (
 	objectIDbase32  = base32.NewEncoding("123456789abcdefghijklmnopqrstuvw").WithPadding(base32.NoPadding)
 )
 
+// topicIdDstLen = objectIDbase32.EncodedLen(topicIdSrcLen) // 提前计算长度
+const topicIdSrcLen, topicIdDstLen = 16, 26
+
 func GetId() TopicID {
-	id := make([]byte, 16+26)
-	_, _ = rand.Reader.Read(id[:16])
+	id := make([]byte, topicIdSrcLen+topicIdDstLen)
+	_, _ = rand.Reader.Read(id[:topicIdSrcLen])
 	count := atomic.AddUint32(&objectIDCounter, 1)
 	for i := 0; i < 4; i++ {
 		if c := byte(count >> (i * 8)); c > 0 {
@@ -93,13 +95,16 @@ func GetId() TopicID {
 		}
 	}
 	// 16个随机字节(4位为自增id),确保不重复 -> 26个base32编码后字符
-	objectIDbase32.Encode(id[16:], id[:16])
-	return TopicID(id[16:])
+	objectIDbase32.Encode(id[topicIdSrcLen:], id[:topicIdSrcLen])
+	return TopicID(id[topicIdSrcLen:])
 }
+
+// IsOrdinary 普通节点ID长度固定为26,其他长度均为特殊节点
+func (t TopicID) IsOrdinary() bool { return len(t) == topicIdDstLen }
 
 func (t TopicID) MarshalJSON() ([]byte, error) {
 	id := t
-	if id == "" {
+	if len(id) != topicIdDstLen {
 		id = GetId()
 	}
 	return []byte(`"` + id + `"`), nil

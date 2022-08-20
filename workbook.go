@@ -242,44 +242,40 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) 
 		return errors.New("RootTopic is null")
 	}
 
-	var buf strings.Builder
-	buf.WriteString(`[{"`)
-	buf.WriteString(idKey)
-	buf.WriteString(`":"`)
-	buf.WriteString(string(cent.ID))
-	buf.WriteString(`","`)
-	buf.WriteString(titleKey)
-	buf.WriteString(`":`)
-	quote := make([]byte, 0, 128)
-	// 主题内容可能出现'\n','\t'等特殊字符,需要安全的方法在两侧添加引号
-	buf.Write(strconv.AppendQuote(quote[:0], cent.Title))
-	buf.WriteByte('}')
-	// 以上数据为中心主题节点
-
-	// 通过递归依次写入所有子节点数据
-	var loop func(topic *Topic)
-	loop = func(topic *Topic) {
-		if topic != nil && topic.Children != nil {
-			for _, tp := range topic.Children.Attached {
-				buf.WriteString(`,{"`)
-				buf.WriteString(idKey)
-				buf.WriteString(`":"`)
-				buf.WriteString(string(tp.ID))
-				buf.WriteString(`","`)
-				buf.WriteString(titleKey)
-				buf.WriteString(`":`)
-				// 只有主题内容会出现特殊转义字符,需要特殊方式加引号
-				buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
-				buf.WriteString(`,"`)
-				buf.WriteString(parentKey)
-				buf.WriteString(`":"`)
-				buf.WriteString(string(tp.parent.ID))
-				buf.WriteString(`"}`)
-				loop(tp)
-			}
+	var (
+		buf   strings.Builder
+		quote = make([]byte, 0, 128)
+	)
+	cent.Range(func(tp *Topic) {
+		if tp.IsCent() {
+			// 中心主题一般为数组第一个元素
+			buf.WriteString(`[{"`)
+			buf.WriteString(idKey)
+			buf.WriteString(`":"`)
+			buf.WriteString(string(cent.ID))
+			buf.WriteString(`","`)
+			buf.WriteString(titleKey)
+			buf.WriteString(`":`)
+			// 主题内容可能出现'\n','\t'等特殊字符,需要安全的方法在两侧添加引号
+			buf.Write(strconv.AppendQuote(quote[:0], cent.Title))
+			buf.WriteByte('}')
+		} else {
+			buf.WriteString(`,{"`)
+			buf.WriteString(idKey)
+			buf.WriteString(`":"`)
+			buf.WriteString(string(tp.ID))
+			buf.WriteString(`","`)
+			buf.WriteString(titleKey)
+			buf.WriteString(`":`)
+			// 只有主题内容会出现特殊转义字符,需要特殊方式加引号
+			buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
+			buf.WriteString(`,"`)
+			buf.WriteString(parentKey)
+			buf.WriteString(`":"`)
+			buf.WriteString(string(tp.parent.ID))
+			buf.WriteString(`"}`)
 		}
-	}
-	loop(cent)
+	})
 	buf.WriteByte(']')
 	str := buf.String()
 
