@@ -1,0 +1,165 @@
+{
+	"nodes": [
+		{
+			"id": "root",
+			"isroot": true,
+			"topic": "中心主题1",
+			"parentid": null,
+			"customStyle": {},
+			"expanded": true,
+			"style": {}
+		},
+		{
+			"id": "2be5cf9a33a9c6f2",
+			"topic": "分支主题1",
+			"customStyle": {
+				"borderColor": "#4D94FF"
+			},
+			"expanded": true,
+			"parentid": "root",
+			"style": {}
+		},
+		{
+			"id": "2be5d068377d6cde",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5cf9a33a9c6f2",
+			"style": {}
+		},
+		{
+			"id": "2be5d0930e13be17",
+			"topic": "子主题2",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5cf9a33a9c6f2",
+			"style": {}
+		},
+		{
+			"id": "2be5d0fc97db696f",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d0930e13be17",
+			"style": {}
+		},
+		{
+			"id": "2be5d199a86a8b63",
+			"topic": "子主题4",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5cf9a33a9c6f2",
+			"style": {}
+		},
+		{
+			"id": "2be5d0a2ce317fae",
+			"topic": "子主题3",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5cf9a33a9c6f2",
+			"style": {}
+		},
+		{
+			"id": "2be5d0030aaff58b",
+			"topic": "分支主题2",
+			"customStyle": {
+				"borderColor": "#1BD5D2"
+			},
+			"expanded": true,
+			"parentid": "root",
+			"style": {}
+		},
+		{
+			"id": "2be5d242e8dad0ae",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d0030aaff58b",
+			"style": {}
+		},
+		{
+			"id": "2be5d2709f00845f",
+			"topic": "子主题2",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d0030aaff58b",
+			"style": {}
+		},
+		{
+			"id": "2be5d3d9eccc2a79",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d2709f00845f",
+			"style": {}
+		},
+		{
+			"id": "2be5d4215f81958b",
+			"topic": "子主题2",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d2709f00845f",
+			"style": {}
+		},
+		{
+			"id": "2be5d46ae2ccc0b5",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d4215f81958b",
+			"style": {}
+		},
+		{
+			"id": "2be5d43e97cf4529",
+			"topic": "子主题3",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d2709f00845f",
+			"style": {}
+		},
+		{
+			"id": "2be5d02be2f48037",
+			"topic": "分支主题3",
+			"customStyle": {
+				"borderColor": "#1DDA70"
+			},
+			"expanded": true,
+			"parentid": "root",
+			"style": {}
+		},
+		{
+			"id": "2be5d2b14e3de6f3",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d02be2f48037",
+			"style": {}
+		},
+		{
+			"id": "2be5d2df16c12caf",
+			"topic": "子主题2",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d02be2f48037",
+			"style": {}
+		},
+		{
+			"id": "2be5d36e769a0c3c",
+			"topic": "子主题1",
+			"customStyle": {},
+			"expanded": true,
+			"parentid": "2be5d2df16c12caf",
+			"style": {}
+		}
+	],
+	"readOnly": false,
+	"toolbar": {
+		"lineType": "default",
+		"strategy": "logic_right",
+		"zoom": 1,
+		"loading": true,
+		"borderColor": "#1DDA70"
+	},
+	"remarks": {},
+	"version": "2.0"
+}
