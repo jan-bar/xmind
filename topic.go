@@ -243,6 +243,13 @@ func (st *Topic) Move(componentId TopicID, modes ...AddMode) *Topic {
 	if parent == nil || parent.Children == nil || len(parent.Children.Attached) == 0 {
 		return st // 被移动节点没有父节点,或者父节点没有子节点(貌似没这情况,以防万一)
 	}
+
+	for p := st; p.parent != nil; p = p.parent {
+		if p.parent == src {
+			return st // 被移动的节点是当前节点的祖辈节点,不支持被移动
+		}
+	}
+
 	cur := 0
 	for i, tp := range parent.Children.Attached {
 		if tp.ID != src.ID {
