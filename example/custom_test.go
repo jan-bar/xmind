@@ -61,7 +61,7 @@ func TestSaveCustom(t *testing.T) {
 			OnTitle("456").Add("xzc").Add("wqer")
 
 		var data []byte // 直接将sheet对象转换为自定义json结构,也可用 `var data string` 获取字符串
-		err := xmind.SaveCustom(st, "id", "title", "parentId", "isroot,1", &data)
+		err := xmind.SaveCustom(st, "id", "title", "parentId", "isroot,1", &data, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,7 +85,29 @@ func TestSaveCustom(t *testing.T) {
 
 		var data []Node
 		// 直接将结果转换到数组对象中,要求是json tag作为参数传入
-		err := xmind.SaveCustom(st, "id", "title", "parentId", "isRoot", &data)
+		err := xmind.SaveCustom(st, "id", "title", "parentId", "isRoot", &data, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, d := range data {
+			t.Logf("%d -> %s,%s,%s", i, d.Id, d.Title, d.ParentId)
+		}
+	})
+
+	t.Run("gen id", func(t *testing.T) {
+		st := xmind.NewSheet("sheet1", "main topic")
+		st.Add("222").Add("333").OnTitle("222").Add("111").Add("222").
+			OnTitle("333").Add("xzc").Add("wqer")
+
+		type Node struct {
+			Id       string `json:"id"`
+			Title    string `json:"title"`
+			ParentId string `json:"parentId"`
+		}
+
+		var data []Node
+		// 直接将结果转换到数组对象中,要求是json tag作为参数传入
+		err := xmind.SaveCustom(st, "id", "title", "parentId", "isRoot", &data, xmind.CustomIncrId())
 		if err != nil {
 			t.Fatal(err)
 		}

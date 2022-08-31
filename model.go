@@ -5,6 +5,7 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"encoding/xml"
+	"strconv"
 	"sync/atomic"
 )
 
@@ -128,4 +129,21 @@ func (ch *Children) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 	ch.Attached = ch.Topics.Topic
 	return nil
+}
+
+// CustomIncrId 自定义生成自增数字id方案
+func CustomIncrId() func(TopicID) string {
+	cntId := 0
+	cntMap := map[TopicID]string{}
+	// 由于xmind的id生成比较长,这里改为自增数字
+	return func(id TopicID) string {
+		s, ok := cntMap[id]
+		if ok {
+			return s
+		}
+		cntId++
+		s = strconv.Itoa(cntId)
+		cntMap[id] = s
+		return s
+	}
 }

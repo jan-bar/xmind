@@ -249,12 +249,14 @@ func SaveSheets(path string, sheet ...*Topic) error {
 //          parentKey="parentId,xx",表示根节点添加值为空的父节点id
 //    isRootKey: 以该json tag字段,true表示为根节点
 //          isRootKey="",表示所有节点都不添加
-//          isRootKey="isroot",表示所有节点都添加
-//          isRootKey="isroot,xx",表示只添加根节点
+//          isRootKey="isRoot",表示所有节点都添加
+//          isRootKey="isRoot,xx",表示只添加根节点
 //    v: 可以为 *string,*[]byte,*[]Nodes{} 这几种类型
+//    genId: 外部自定义生成id方案,自动生成的id是参照xmind,可能有点长
 //  return
 //    error: 返回错误
-func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string, v interface{}) (err error) {
+func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string,
+	v interface{}, genId func(id TopicID) string) (err error) {
 	cent := sheet.On(CentKey)
 	if cent == nil {
 		return errors.New("RootTopic is null")
@@ -282,12 +284,16 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string, v in
 			buf.WriteString(`[{"`)
 			buf.WriteString(idKey)
 			buf.WriteString(`":"`)
-			buf.WriteString(string(cent.ID))
+			if genId != nil {
+				buf.WriteString(genId(tp.ID))
+			} else {
+				buf.WriteString(string(tp.ID))
+			}
 			buf.WriteString(`","`)
 			buf.WriteString(titleKey)
 			buf.WriteString(`":`)
 			// 主题内容可能出现'\n','\t'等特殊字符,需要安全的方法在两侧添加引号
-			buf.Write(strconv.AppendQuote(quote[:0], cent.Title))
+			buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
 			if ok {
 				buf.WriteString(`,"`)
 				buf.WriteString(parentKey)
@@ -303,7 +309,11 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string, v in
 			buf.WriteString(`,{"`)
 			buf.WriteString(idKey)
 			buf.WriteString(`":"`)
-			buf.WriteString(string(tp.ID))
+			if genId != nil {
+				buf.WriteString(genId(tp.ID))
+			} else {
+				buf.WriteString(string(tp.ID))
+			}
 			buf.WriteString(`","`)
 			buf.WriteString(titleKey)
 			buf.WriteString(`":`)
@@ -312,7 +322,11 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string, v in
 			buf.WriteString(`,"`)
 			buf.WriteString(parentKey)
 			buf.WriteString(`":"`)
-			buf.WriteString(string(tp.parent.ID))
+			if genId != nil {
+				buf.WriteString(genId(tp.parent.ID))
+			} else {
+				buf.WriteString(string(tp.parent.ID))
+			}
 			buf.WriteString(`"`)
 			if rk&2 != 0 {
 				buf.WriteString(`,"`)
