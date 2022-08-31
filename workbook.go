@@ -104,7 +104,7 @@ func LoadFile(path string) (*WorkBook, error) {
 //    data:
 //      方式1:
 //        使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
-//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentId")
+//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentId","")
 //        测试如下结构
 //        type Nodes struct {
 //           ID       string `json:"id"`
@@ -112,15 +112,16 @@ func LoadFile(path string) (*WorkBook, error) {
 //           ParentId string `json:"parentId"`
 //        }
 //      方式2:
-//        传json string: `[{"root","top"},{"123","one","root"}]`
-//        传json []byte: []byte(`[{"root","top"},{"123","one","root"}]`)
+//        传json string: data := `[{"a":"1","b":"main topic"},{"a":"2","b":"topic1","c":"1"},{"a":"3","b":"topic2","c":"1"},{"a":"4","b":"topic3","c":"2"},{"a":"5","b":"topic4","c":"2"},{"a":"6","b":"topic5","c":"3"},{"a":"7","b":"topic6","c":"3"}]`
+//        LoadCustom(data,"a","b","c","")
 //    idKey: 以该json tag字段作为主题ID
 //    titleKey: 以该json tag字段作为主题内容
 //    parentKey: 以该json tag字段作为判断父节点的依据
+//    isRootKey: 以该json tag字段,该字段为bool类型,true表示根节点,false表示普通节点
 //  return
 //    *Topic: 生成的主题地址
 //    error: 返回错误
-func LoadCustom(data interface{}, idKey, titleKey, parentKey string) (sheet *Topic, err error) {
+func LoadCustom(data interface{}, idKey, titleKey, parentKey, isRootKey string) (sheet *Topic, err error) {
 	var byteData []byte
 	switch td := data.(type) {
 	case string:
@@ -141,12 +142,22 @@ func LoadCustom(data interface{}, idKey, titleKey, parentKey string) (sheet *Top
 			Tag:  reflect.StructTag(`json:"` + tag + `"`),
 		}
 	}
-	// 动态创建一个结构体,并new该结构体数组的对象
-	nodes := reflect.New(reflect.SliceOf(reflect.StructOf([]reflect.StructField{
+
+	stuField := []reflect.StructField{
 		newStruct("Id", idKey),
 		newStruct("Title", titleKey),
 		newStruct("ParentId", parentKey),
-	})))
+	}
+	if isRootKey != "" {
+		stuField = append(stuField, reflect.StructField{
+			Name: "IsRoot",
+			Type: reflect.TypeOf(true),
+			Tag:  reflect.StructTag(`json:"` + isRootKey + `"`),
+		})
+	}
+
+	// 动态创建一个结构体,并new该结构体数组的对象
+	nodes := reflect.New(reflect.SliceOf(reflect.StructOf(stuField)))
 
 	// 通过json库将传入对象转换为动态生成的对象
 	err = json.Unmarshal(byteData, nodes.Interface())
@@ -169,7 +180,8 @@ func LoadCustom(data interface{}, idKey, titleKey, parentKey string) (sheet *Top
 		title := stu.Field(1).String()
 		parentId := stu.Field(2).String()
 
-		if parentId == "" { // 中心主题父节点id为空
+		// 优先根据IsRoot字段判断当前节点是根节点
+		if (isRootKey != "" && stu.Field(3).Bool()) || parentId == "" {
 			sheet = NewSheet("sheet", title)
 			idMap[id] = CentKey // 建立中心主题ID映射关系
 		} else {
@@ -233,10 +245,16 @@ func SaveSheets(path string, sheet ...*Topic) error {
 //    idKey: 以该json tag字段作为主题ID
 //    titleKey: 以该json tag字段作为主题内容
 //    parentKey: 以该json tag字段作为判断父节点的依据
+//          parentKey="parentId",表示根节点不添加父节点id
+//          parentKey="parentId,xx",表示根节点添加值为空的父节点id
+//    isRootKey: 以该json tag字段,true表示为根节点
+//          isRootKey="",表示所有节点都不添加
+//          isRootKey="isroot",表示所有节点都添加
+//          isRootKey="isroot,xx",表示只添加根节点
 //    v: 可以为 *string,*[]byte,*[]Nodes{} 这几种类型
 //  return
 //    error: 返回错误
-func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) (err error) {
+func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string, v interface{}) (err error) {
 	cent := sheet.On(CentKey)
 	if cent == nil {
 		return errors.New("RootTopic is null")
@@ -245,7 +263,19 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) 
 	var (
 		buf   strings.Builder
 		quote = make([]byte, 0, 128)
+		ok    bool
+		rk    = 0
 	)
+	if isRootKey != "" {
+		isRootKey, _, ok = strings.Cut(isRootKey, ",")
+		if ok {
+			rk = 1
+		} else {
+			rk = 3
+		}
+	}
+	parentKey, _, ok = strings.Cut(parentKey, ",")
+
 	cent.Range(func(tp *Topic) {
 		if tp.IsCent() {
 			// 中心主题一般为数组第一个元素
@@ -258,6 +288,16 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) 
 			buf.WriteString(`":`)
 			// 主题内容可能出现'\n','\t'等特殊字符,需要安全的方法在两侧添加引号
 			buf.Write(strconv.AppendQuote(quote[:0], cent.Title))
+			if ok {
+				buf.WriteString(`,"`)
+				buf.WriteString(parentKey)
+				buf.WriteString(`":""`)
+			}
+			if rk&1 != 0 {
+				buf.WriteString(`,"`)
+				buf.WriteString(isRootKey)
+				buf.WriteString(`":true`)
+			}
 			buf.WriteByte('}')
 		} else {
 			buf.WriteString(`,{"`)
@@ -273,7 +313,13 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey string, v interface{}) 
 			buf.WriteString(parentKey)
 			buf.WriteString(`":"`)
 			buf.WriteString(string(tp.parent.ID))
-			buf.WriteString(`"}`)
+			buf.WriteString(`"`)
+			if rk&2 != 0 {
+				buf.WriteString(`,"`)
+				buf.WriteString(isRootKey)
+				buf.WriteString(`":false`)
+			}
+			buf.WriteByte('}')
 		}
 	})
 	buf.WriteByte(']')

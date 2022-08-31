@@ -8,6 +8,8 @@ import (
 	"github.com/jan-bar/xmind"
 )
 
+// go run youdao.go test.mindmap test.xmind
+
 func main() {
 	if len(os.Args) != 3 {
 		return
@@ -33,7 +35,7 @@ func YouDao(src, dst string) error {
 	}
 
 	// 有道云笔记思维导图,符合数组形式的结构,用自定义类型直接就可以转换
-	st, err := xmind.LoadCustom([]byte(node.Nodes), "id", "topic", "parentid")
+	st, err := xmind.LoadCustom([]byte(node.Nodes), "id", "topic", "parentid", "isroot")
 	if err != nil {
 		return err
 	}
