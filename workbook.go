@@ -200,20 +200,34 @@ func (wk *WorkBook) check() error {
 	return nil
 }
 
-// Save 保存对象为 *.xmind 文件
-func (wk *WorkBook) Save(path string) error {
+// SaveTo 将xmind保存到io.Writer对象,使用更灵活
+func (wk *WorkBook) SaveTo(w io.Writer) error {
 	err := wk.check()
 	if err != nil {
 		return err
-	}
-	if filepath.Ext(path) != ".xmind" {
-		return fmt.Errorf("%s: suffix must be .xmind", path)
 	}
 
 	cp := make([]*Topic, 0, len(wk.Topics))
 	for _, topic := range wk.Topics {
 		// 所有sheet全部切换到根节点,最终使用存入的cp生成xmind文件
 		cp = append(cp, topic.On(rootKey))
+	}
+
+	zw := zip.NewWriter(w)
+	//goland:noinspection GoUnhandledErrorResult
+	defer zw.Close()
+
+	wz, err := zw.Create(ContentJson)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(wz).Encode(cp)
+}
+
+// Save 保存对象为 *.xmind 文件
+func (wk *WorkBook) Save(path string) error {
+	if filepath.Ext(path) != ".xmind" {
+		return fmt.Errorf("%s: suffix must be .xmind", path)
 	}
 
 	fw, err := os.Create(path)
@@ -223,15 +237,7 @@ func (wk *WorkBook) Save(path string) error {
 	//goland:noinspection GoUnhandledErrorResult
 	defer fw.Close()
 
-	zw := zip.NewWriter(fw)
-	//goland:noinspection GoUnhandledErrorResult
-	defer zw.Close()
-
-	wz, err := zw.Create(ContentJson)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(wz).Encode(cp)
+	return wk.SaveTo(fw)
 }
 
 // SaveSheets 保存多个sheet画布到一个xmind文件
