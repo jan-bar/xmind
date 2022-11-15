@@ -200,6 +200,34 @@ func (wk *WorkBook) check() error {
 	return nil
 }
 
+// WriteToBuffer provides a function to get bytes.Buffer from the saved file,
+// and it allocates space in memory. Be careful when the file size is large.
+func (wk *WorkBook) WriteToBuffer() (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+	err := wk.check()
+	if err != nil {
+		return buf, err
+	}
+
+	cp := make([]*Topic, 0, len(wk.Topics))
+	for _, topic := range wk.Topics {
+		// 所有sheet全部切换到根节点,最终使用存入的cp生成xmind文件
+		cp = append(cp, topic.On(rootKey))
+	}
+
+	zw := zip.NewWriter(buf)
+	//goland:noinspection GoUnhandledErrorResult
+	defer zw.Close()
+
+	wz, err := zw.Create(ContentJson)
+	if err != nil {
+		return buf, err
+	}
+	err = json.NewEncoder(wz).Encode(cp)
+
+	return buf, nil
+}
+
 // SaveTo 将xmind保存到io.Writer对象,使用更灵活
 func (wk *WorkBook) SaveTo(w io.Writer) error {
 	err := wk.check()
