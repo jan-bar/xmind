@@ -2,6 +2,7 @@ package xmind
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -223,7 +224,7 @@ func (wk *WorkBook) WriteToBuffer() (*bytes.Buffer, error) {
 	if err != nil {
 		return buf, err
 	}
-	
+
 	err = json.NewEncoder(wz).Encode(cp)
 	if err != nil {
 		return buf, err
