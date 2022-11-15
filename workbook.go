@@ -223,7 +223,11 @@ func (wk *WorkBook) WriteToBuffer() (*bytes.Buffer, error) {
 	if err != nil {
 		return buf, err
 	}
+	
 	err = json.NewEncoder(wz).Encode(cp)
+	if err != nil {
+		return buf, err
+	}
 
 	return buf, nil
 }
