@@ -10,9 +10,6 @@ import (
 
 func TestCreateXmind(t *testing.T) {
 	notes := xmind.Notes{
-		RealHTML: xmind.ContentStruct{
-			Content: "<div>I'm notes</div>",
-		},
 		Plain: xmind.ContentStruct{
 			Content: "I'm notes",
 		},

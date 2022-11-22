@@ -52,8 +52,7 @@ type (
 	StructureClass string
 
 	Notes struct {
-		RealHTML ContentStruct `json:"realHTML" xml:"realHTML"` // 添加自定义html
-		Plain    ContentStruct `json:"plain" xml:"plain"`
+		Plain ContentStruct `json:"plain" xml:"plain"`
 	}
 
 	ContentStruct struct {
