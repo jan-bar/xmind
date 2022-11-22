@@ -5,7 +5,7 @@
 
 本库主要加载xmind文件为json结构,保存文件时也用的json结构而不是xml结构
 
-本库只做了最基本的主题添加功能,类似`标签/备注/图片`等其他功能不考虑,有想法的自行实现
+本库只做了最基本的主题添加功能,其他功能不考虑,有想法的自行实现,或者提PR
 
 本库做了通用加载和通用保存方法,可以更灵活的与其他思维导图进行转换
 
@@ -29,7 +29,7 @@ func main() {
 	// 这里定义 a 表示节点id, b 表示主题内容, c 表示父节点id
 	// 传入定好的json字符串,以及指定好json的key字符串就可以将任意json数据转换成xmind
 	// 也可用用 data := []byte(`{}`) 传入字节数组
-	st, err := xmind.LoadCustom(data, "a", "b", "c")
+	st, err := xmind.LoadCustom(data, "a", "b", "c", "")
 	if err != nil {
 		panic(err)
 	}
