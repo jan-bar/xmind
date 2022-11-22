@@ -467,3 +467,23 @@ func (st *Topic) Resources() map[TopicID]string {
 	}
 	return res
 }
+
+// AddLabel 在当前主题上加label标签
+//  param
+//    label: 标签内容
+//  return
+//    *Topic: 当前主题地址
+func (st *Topic) AddLabel(label ...string) *Topic {
+	st.Labels = label
+	return st
+}
+
+// AddNotes 在当前主题上加notes备注
+//  param
+//    Notes: 备注内通内容
+//  return
+//    *Topic: 当前主题地址
+func (st *Topic) AddNotes(notes Notes) *Topic {
+	st.Notes = &notes
+	return st
+}

@@ -9,9 +9,15 @@ import (
 )
 
 func TestCreateXmind(t *testing.T) {
+	notes := xmind.Notes{
+		Plain: xmind.ContentStruct{
+			Content: "I'm notes",
+		},
+	}
+
 	st1 := xmind.NewSheet("sheet1", "main 1 topic")
-	st1.Add("123").Add("456").Add("789").OnTitle("123").
-		Add("2sc").Add("345").OnTitle("456").
+	st1.Add("123").Add("456").Add("789").OnTitle("123").AddLabel("this is label").
+		Add("2sc").Add("345").OnTitle("456").AddNotes(notes).
 		Add("xzcv").Add("ewr").OnTitle("789").Add("saf").Add("xcv")
 
 	st2 := xmind.NewSheet("sheet2", "main 2 topic")
@@ -140,7 +146,6 @@ func TestName(t *testing.T) {
 			},
 		},
 	}
-
 
 	// 通过手动指定结构体,也可以创建文件,只需要填写Title,其他字段会自动生成
 	wb := xmind.WorkBook{Topics: []*xmind.Topic{st1}}
