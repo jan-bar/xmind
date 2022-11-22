@@ -31,6 +31,8 @@ type (
 		Style          Style          `json:"style"`
 		StructureClass StructureClass `json:"structureClass,omitempty" xml:"structure-class,attr"`
 		Children       *Children      `json:"children,omitempty" xml:"children,omitempty"`
+		Labels         []string       `json:"labels,omitempty" xml:"labels,omitempty"`
+		Notes          *Notes         `json:"notes,omitempty" xml:"notes,omitempty"`
 	}
 
 	TopicID string
@@ -48,6 +50,15 @@ type (
 	}
 
 	StructureClass string
+
+	Notes struct {
+		RealHTML ContentStruct `json:"realHTML" xml:"realHTML"` // 添加自定义html
+		Plain    ContentStruct `json:"plain" xml:"plain"`
+	}
+
+	ContentStruct struct {
+		Content string `json:"content" xml:"content"`
+	}
 )
 
 //goland:noinspection GoUnusedConst,SpellCheckingInspection
