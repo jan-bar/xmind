@@ -57,8 +57,12 @@ func (st *Topic) UpSheet(sheetTitle, centralTopicTitle string, structureClass ..
 
 	root, ok := st.resources[rootKey]
 	if ok {
-		root.Title = sheetTitle
-		root.RootTopic.Title = centralTopicTitle
+		if sheetTitle != "" {
+			root.Title = sheetTitle
+		}
+		if centralTopicTitle != "" {
+			root.RootTopic.Title = centralTopicTitle
+		}
 		if len(structureClass) > 0 {
 			root.RootTopic.StructureClass = structureClass[0]
 		}
