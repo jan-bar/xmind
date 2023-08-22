@@ -29,7 +29,11 @@ func main() {
 	// 这里定义 a 表示节点id, b 表示主题内容, c 表示父节点id
 	// 传入定好的json字符串,以及指定好json的key字符串就可以将任意json数据转换成xmind
 	// 也可用用 data := []byte(`{}`) 传入字节数组
-	st, err := xmind.LoadCustom(data, "a", "b", "c", "")
+	st, err := xmind.LoadCustom(data, map[string]string{
+		xmind.CustomKeyId:       "a",
+		xmind.CustomKeyTitle:    "b",
+		xmind.CustomKeyParentId: "c",
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -39,6 +43,7 @@ func main() {
 	}
 }
 ```
+
 * 通过接口创建xmind对象,并保存xmind文件
 ```go
 package main
@@ -50,11 +55,11 @@ import (
 func main() {
 	st1 := xmind.NewSheet("sheet1", "main 1 topic")
 	st1.Add("123").Add("456").Add("789").OnTitle("123").
-		Add("2sc").Add("345").OnTitle("456").
+		Add("2sc").Add("345").OnTitle("456").AddLabel("label").
 		Add("xzcv").Add("ewr").OnTitle("789").Add("saf").Add("xcv")
 
 	st2 := xmind.NewSheet("sheet2", "main 2 topic")
-	st2.Add("aaa").Add("ewr")
+	st2.Add("aaa").Add("ewr").AddNotes("notes")
 	st2.OnTitle("ewr").Title = "xx-ewr\txvf\nwer" // 修改指定主题内容,其中包含特殊转义字符
 	st2.Add("vbg").Add("qwe").OnTitle("aaa").
 		Add("zxs", xmind.ParentMode). // 为节点添加父节点
