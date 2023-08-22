@@ -9,7 +9,7 @@ import (
 
 const (
 	DefaultMarkdownName   = "default"
-	DefaultMarkdownFormat = "{{Repeat \"#\" .Deep}} {{.Title}}\n\n{{range $i,$v := .Labels}}> {{$v}}\n\n{{end}}{{if .Notes}}> {{.Notes}}\n\n{{end}}"
+	DefaultMarkdownFormat = "{{Repeat \"#\" .Deep}} {{.Title}}\n\n{{range $i,$v := .Labels}}> {{$v}}\n\n{{end}}{{range $i,$v := (SplitLines .Notes \"\\n\\r\")}}> {{$v}}\n\n{{end}}"
 
 	MarkdownKeyDeep = "Deep" // 所在层级,>=1
 )
@@ -22,6 +22,21 @@ func (wk *WorkBook) SaveToMarkdown(w io.Writer, format map[string]string) error 
 
 	tpl, err := template.New(DefaultMarkdownName).Funcs(template.FuncMap{
 		"Repeat": strings.Repeat, // 注册用到的方法
+		"SplitLines": func(s interface{}, sep string) []string {
+			switch ss := s.(type) {
+			case string:
+				return strings.FieldsFunc(ss, func(r rune) bool {
+					for _, sv := range sep {
+						if r == sv {
+							return true // 匹配到分隔符
+						}
+					}
+					return false
+				})
+			default:
+				return nil
+			}
+		},
 	}).Parse(defText)
 	if err != nil {
 		return err
