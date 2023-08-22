@@ -6,6 +6,7 @@ import (
 	"github.com/jan-bar/xmind"
 )
 
+// go test -v -run TestLoadXmind
 func TestLoadXmind(t *testing.T) {
 	TestCreateXmind(t) // 调用该方法先生成xmind文件
 
@@ -33,6 +34,7 @@ func TestLoadXmind(t *testing.T) {
 	}
 }
 
+// go test -v -run TestLoadXmindJson
 func TestLoadXmindJson(t *testing.T) {
 	wb, err := xmind.LoadFile(xmind.ContentJson)
 	if err != nil {
@@ -47,6 +49,7 @@ func TestLoadXmindJson(t *testing.T) {
 	}
 }
 
+// go test -v -run TestLoadXmindXml
 func TestLoadXmindXml(t *testing.T) {
 	wb, err := xmind.LoadFile(xmind.ContentXml)
 	if err != nil {

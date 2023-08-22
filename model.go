@@ -3,7 +3,6 @@ package xmind
 import (
 	"crypto/rand"
 	"encoding/base32"
-	"encoding/json"
 	"encoding/xml"
 	"strconv"
 	"sync/atomic"
@@ -31,7 +30,7 @@ type (
 		Style          Style          `json:"style"`
 		StructureClass StructureClass `json:"structureClass,omitempty" xml:"structure-class,attr"`
 		Children       *Children      `json:"children,omitempty" xml:"children,omitempty"`
-		Labels         []string       `json:"labels,omitempty" xml:"labels,omitempty"`
+		Labels         []string       `json:"labels,omitempty" xml:"labels>label,omitempty"`
 		Notes          *Notes         `json:"notes,omitempty" xml:"notes,omitempty"`
 	}
 
@@ -43,10 +42,7 @@ type (
 	}
 
 	Children struct {
-		Attached []*Topic `json:"attached"`
-		Topics   struct {
-			Topic []*Topic `xml:"topic"`
-		} `json:"-" xml:"topics"`
+		Attached []*Topic `json:"attached" xml:"topics>topic"`
 	}
 
 	StructureClass string
@@ -59,6 +55,10 @@ type (
 		Content string `json:"content" xml:"content"`
 	}
 )
+
+func (cs *ContentStruct) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	return d.DecodeElement(&cs.Content, &start) // xml和json结构不兼容
+}
 
 //goland:noinspection GoUnusedConst,SpellCheckingInspection
 const (
@@ -119,26 +119,6 @@ func (t TopicID) MarshalJSON() ([]byte, error) {
 		id = GetId()
 	}
 	return []byte(`"` + id + `"`), nil
-}
-
-type aliasChildren Children
-
-func (ch *Children) UnmarshalJSON(data []byte) error {
-	err := json.Unmarshal(data, (*aliasChildren)(ch))
-	if err != nil {
-		return err
-	}
-	ch.Topics.Topic = ch.Attached
-	return nil
-}
-
-func (ch *Children) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	err := d.DecodeElement((*aliasChildren)(ch), &start)
-	if err != nil {
-		return err
-	}
-	ch.Attached = ch.Topics.Topic
-	return nil
 }
 
 // CustomIncrId 自定义生成自增数字id方案

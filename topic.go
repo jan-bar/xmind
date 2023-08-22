@@ -436,25 +436,31 @@ func (st *Topic) IsCent() bool {
 // Range 从当前节点递归遍历子节点
 //  param
 //    f: 外部的回调
-func (st *Topic) Range(f func(*Topic)) {
+func (st *Topic) Range(f func(int, *Topic) error) error {
 	if st != nil {
-		var loop func(*Topic)
-		loop = func(tp *Topic) {
+		var loop func(int, *Topic) error
+		loop = func(deep int, tp *Topic) (err error) {
 			if tp != nil {
-				f(tp) // 通过回调函数让调用者实现自己的逻辑
-				if tp.Children != nil && len(tp.Children.Attached) > 0 {
-					for _, tc := range tp.Children.Attached {
-						loop(tc)
+				// 通过回调函数让调用者实现自己的逻辑
+				if err = f(deep, tp); err == nil {
+					if tp.Children != nil && len(tp.Children.Attached) > 0 {
+						for _, tc := range tp.Children.Attached {
+							if err = loop(deep+1, tc); err != nil {
+								return
+							}
+						}
 					}
 				}
 			}
+			return
 		}
 		if st.RootTopic != nil {
-			loop(st.RootTopic) // 当前为根节点,从中心主题开始遍历
+			return loop(1, st.RootTopic) // 当前为根节点,从中心主题开始遍历
 		} else {
-			loop(st) // 其他情况从当前节点开始遍历
+			return loop(1, st) // 其他情况从当前节点开始遍历
 		}
 	}
+	return nil
 }
 
 // Resources 返回所有主题的ID和内容资源
@@ -478,7 +484,9 @@ func (st *Topic) Resources() map[TopicID]string {
 //  return
 //    *Topic: 当前主题地址
 func (st *Topic) AddLabel(label ...string) *Topic {
-	st.Labels = label
+	if len(label) > 0 {
+		st.Labels = label
+	}
 	return st
 }
 
@@ -487,7 +495,9 @@ func (st *Topic) AddLabel(label ...string) *Topic {
 //    Notes: 备注内通内容
 //  return
 //    *Topic: 当前主题地址
-func (st *Topic) AddNotes(notes Notes) *Topic {
-	st.Notes = &notes
+func (st *Topic) AddNotes(notes string) *Topic {
+	if notes != "" {
+		st.Notes = &Notes{Plain: ContentStruct{Content: notes}}
+	}
 	return st
 }

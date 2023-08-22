@@ -35,7 +35,12 @@ func YouDao(src, dst string) error {
 	}
 
 	// 有道云笔记思维导图,符合数组形式的结构,用自定义类型直接就可以转换
-	st, err := xmind.LoadCustom([]byte(node.Nodes), "id", "topic", "parentid", "isroot")
+	st, err := xmind.LoadCustom([]byte(node.Nodes), map[string]string{
+		xmind.CustomKeyId:       "id",
+		xmind.CustomKeyTitle:    "topic",
+		xmind.CustomKeyParentId: "parentid",
+		xmind.CustomKeyIsRoot:   "isroot",
+	})
 	if err != nil {
 		return err
 	}

@@ -99,29 +99,54 @@ func LoadFile(path string) (*WorkBook, error) {
 	return nil, fmt.Errorf("can not read %s", path)
 }
 
+const (
+	CustomKeyId       = "Id"
+	CustomKeyTitle    = "Title"
+	CustomKeyParentId = "ParentId"
+	CustomKeyIsRoot   = "IsRoot"
+	CustomKeyLabels   = "Labels"
+	CustomKeyNotes    = "Notes"
+)
+
 // LoadCustom 根据符合要求的任意结构加载
 //  param
 //    data:
 //      方式1:
 //        使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
-//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},"id","topic","parentId","")
+//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},map[string]string{
+//          CustomKeyId:       "id",
+//          CustomKeyTitle:    "topic",
+//          CustomKeyParentId: "parentId",
+//        })
 //        测试如下结构
 //        type Nodes struct {
 //           ID       string `json:"id"`
 //           Topic    string `json:"topic"`
 //           ParentId string `json:"parentId"`
+//           Labels []string `json:"labels"`
+//           Notes    string `json:"notes"`
 //        }
 //      方式2:
-//        传json string: data := `[{"a":"1","b":"main topic"},{"a":"2","b":"topic1","c":"1"},{"a":"3","b":"topic2","c":"1"},{"a":"4","b":"topic3","c":"2"},{"a":"5","b":"topic4","c":"2"},{"a":"6","b":"topic5","c":"3"},{"a":"7","b":"topic6","c":"3"}]`
-//        LoadCustom(data,"a","b","c","")
-//    idKey: 以该json tag字段作为主题ID
-//    titleKey: 以该json tag字段作为主题内容
-//    parentKey: 以该json tag字段作为判断父节点的依据
-//    isRootKey: 以该json tag字段,该字段为bool类型,true表示根节点,false表示普通节点
+//        传json string: data := `[
+//          {"a":"1","b":"main topic","labels":["l1","l2"],"notes":"notes"},
+//          {"a":"2","b":"topic1","c":"1"},
+//          {"a":"3","b":"topic2","c":"1"},
+//          {"a":"4","b":"topic3","c":"2"},
+//          {"a":"5","b":"topic4","c":"2"},
+//          {"a":"6","b":"topic5","c":"3"},
+//          {"a":"7","b":"topic6","c":"3"}]`
+//        LoadCustom(data,map[string]string{
+//          CustomKeyId:       "id",       // 以该json tag字段作为主题ID
+//          CustomKeyTitle:    "topic",    // 以该json tag字段作为主题内容
+//          CustomKeyParentId: "parentId", // 以该json tag字段作为判断父节点的依据
+//          CustomKeyIsRoot:   "isRoot",   // 以该json tag字段,bool类型,true表示根节点,false表示普通节点
+//          CustomKeyLabels:   "labels",   // 以该json tag字段作为主题标签
+//          CustomKeyNotes:    "notes",    // 以该json tag字段作为主题备注
+//        })
 //  return
 //    *Topic: 生成的主题地址
 //    error: 返回错误
-func LoadCustom(data interface{}, idKey, titleKey, parentKey, isRootKey string) (sheet *Topic, err error) {
+func LoadCustom(data interface{}, custom map[string]string) (sheet *Topic, err error) {
 	var byteData []byte
 	switch td := data.(type) {
 	case string:
@@ -135,22 +160,35 @@ func LoadCustom(data interface{}, idKey, titleKey, parentKey, isRootKey string) 
 		}
 	}
 
-	newStruct := func(name, tag string) reflect.StructField {
-		return reflect.StructField{
-			Name: name,
-			Type: reflect.TypeOf(""),
-			Tag:  reflect.StructTag(`json:"` + tag + `"`),
-		}
+	strType := reflect.TypeOf("")
+	stuField := []reflect.StructField{
+		{
+			Name: CustomKeyId, Type: strType,
+			Tag: reflect.StructTag(`json:"` + custom[CustomKeyId] + `"`),
+		},
+		{
+			Name: CustomKeyTitle, Type: strType,
+			Tag: reflect.StructTag(`json:"` + custom[CustomKeyTitle] + `"`),
+		},
+		{
+			Name: CustomKeyParentId, Type: strType,
+			Tag: reflect.StructTag(`json:"` + custom[CustomKeyParentId] + `"`),
+		},
+		{
+			Name: CustomKeyLabels,
+			Type: reflect.TypeOf([]string{}),
+			Tag:  reflect.StructTag(`json:"` + custom[CustomKeyLabels] + `"`),
+		},
+		{
+			Name: CustomKeyNotes, Type: strType,
+			Tag: reflect.StructTag(`json:"` + custom[CustomKeyNotes] + `"`),
+		},
 	}
 
-	stuField := []reflect.StructField{
-		newStruct("Id", idKey),
-		newStruct("Title", titleKey),
-		newStruct("ParentId", parentKey),
-	}
-	if isRootKey != "" {
+	isRootKey, hasRoot := custom[CustomKeyIsRoot]
+	if hasRoot {
 		stuField = append(stuField, reflect.StructField{
-			Name: "IsRoot",
+			Name: CustomKeyIsRoot,
 			Type: reflect.TypeOf(true),
 			Tag:  reflect.StructTag(`json:"` + isRootKey + `"`),
 		})
@@ -179,13 +217,17 @@ func LoadCustom(data interface{}, idKey, titleKey, parentKey, isRootKey string) 
 		id := stu.Field(0).String()
 		title := stu.Field(1).String()
 		parentId := stu.Field(2).String()
+		labels := stu.Field(3).Interface().([]string)
+		notes := stu.Field(4).String()
 
 		// 优先根据IsRoot字段判断当前节点是根节点
-		if (isRootKey != "" && stu.Field(3).Bool()) || parentId == "" {
+		if (hasRoot && stu.Field(5).Bool()) || parentId == "" {
 			sheet = NewSheet("sheet", title)
 			idMap[id] = CentKey // 建立中心主题ID映射关系
 		} else {
-			last := sheet.On(idMap[parentId]).Add(title).Children.Attached
+			last := sheet.On(idMap[parentId]).
+				Add(title).AddLabel(labels...).
+				AddNotes(notes).Children.Attached
 			// 将刚才添加的子主题ID建立映射关系,刚添加的子主题一定是最后一个
 			idMap[id] = last[len(last)-1].ID
 		}
@@ -248,21 +290,24 @@ func SaveSheets(path string, sheet ...*Topic) error {
 // SaveCustom 自定义字段,将数据写入指定对象中
 //  param
 //    sheet: xmind的sheet数据
-//    idKey: 以该json tag字段作为主题ID
-//    titleKey: 以该json tag字段作为主题内容
-//    parentKey: 以该json tag字段作为判断父节点的依据
-//          parentKey="parentId",表示根节点不添加父节点id
-//          parentKey="parentId,xx",表示根节点添加值为空的父节点id
-//    isRootKey: 以该json tag字段,true表示为根节点
-//          isRootKey="",表示所有节点都不添加
-//          isRootKey="isRoot",表示所有节点都添加
-//          isRootKey="isRoot,xx",表示只添加根节点
+//    custom: map[string]string{
+//      CustomKeyId:       "id",     // 以该json tag字段作为主题ID
+//      CustomKeyTitle:    "title",  // 以该json tag字段作为主题内容
+//      CustomKeyParentId: "parent", // 以该json tag字段作为判断父节点的依据
+//          // "parentId",表示根节点不添加父节点id
+//          // "parentId,xx",表示根节点添加值为空的父节点id
+//      CustomKeyIsRoot: "isRoot",   // 以该json tag字段,true表示为根节点
+//          // "",表示所有节点都不添加
+//          // "isRoot,xx",表示只添加根节点
+//      CustomKeyLabels: "labels", // 以该json tag字段作为标签
+//      CustomKeyNotes:  "notes",  // 以该json tag字段作为备注
+//    }
 //    v: 可以为 *string,*[]byte,*[]Nodes{} 这几种类型
 //    genId: 外部自定义生成id方案,自动生成的id是参照xmind,可能有点长
 //  return
 //    error: 返回错误
-func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string,
-	v interface{}, genId func(id TopicID) string) (err error) {
+func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
+	genId func(id TopicID) string) (err error) {
 	cent := sheet.On(CentKey)
 	if cent == nil {
 		return errors.New("RootTopic is null")
@@ -271,10 +316,11 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string,
 	var (
 		buf   strings.Builder
 		quote = make([]byte, 0, 128)
-		ok    bool
 		rk    = 0
 	)
-	if isRootKey != "" {
+
+	isRootKey, ok := custom[CustomKeyIsRoot]
+	if ok {
 		isRootKey, _, ok = strings.Cut(isRootKey, ",")
 		if ok {
 			rk = 1
@@ -282,49 +328,50 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string,
 			rk = 3
 		}
 	}
+
+	var (
+		idKey     = custom[CustomKeyId]
+		titleKey  = custom[CustomKeyTitle]
+		parentKey = custom[CustomKeyParentId]
+		labelsKey = custom[CustomKeyLabels]
+		notesKey  = custom[CustomKeyNotes]
+	)
 	parentKey, _, ok = strings.Cut(parentKey, ",")
 
-	cent.Range(func(tp *Topic) {
-		if tp.IsCent() {
-			// 中心主题一般为数组第一个元素
-			buf.WriteString(`[{"`)
-			buf.WriteString(idKey)
-			buf.WriteString(`":"`)
-			if genId != nil {
-				buf.WriteString(genId(tp.ID))
-			} else {
-				buf.WriteString(string(tp.ID))
-			}
-			buf.WriteString(`","`)
-			buf.WriteString(titleKey)
-			buf.WriteString(`":`)
-			// 主题内容可能出现'\n','\t'等特殊字符,需要安全的方法在两侧添加引号
-			buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
-			if ok {
+	_ = cent.Range(func(_ int, tp *Topic) error {
+		isCent := tp.IsCent()
+		if isCent {
+			buf.WriteString(`[{"`) // 中心主题为数组第一个元素
+		} else {
+			buf.WriteString(`,{"`)
+		}
+
+		buf.WriteString(idKey)
+		buf.WriteString(`":"`)
+		if genId != nil {
+			buf.WriteString(genId(tp.ID))
+		} else {
+			buf.WriteString(string(tp.ID))
+		}
+		buf.WriteString(`","`)
+		buf.WriteString(titleKey)
+		buf.WriteString(`":`)
+		// 内容可能有需要转义字符,用安全的方式添加引号
+		buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
+
+		if isCent {
+			if ok { // 中心主题添加值为空的数据
 				buf.WriteString(`,"`)
 				buf.WriteString(parentKey)
 				buf.WriteString(`":""`)
 			}
-			if rk&1 != 0 {
+
+			if rk&1 != 0 { // 添加isRoot字段
 				buf.WriteString(`,"`)
 				buf.WriteString(isRootKey)
 				buf.WriteString(`":true`)
 			}
-			buf.WriteByte('}')
 		} else {
-			buf.WriteString(`,{"`)
-			buf.WriteString(idKey)
-			buf.WriteString(`":"`)
-			if genId != nil {
-				buf.WriteString(genId(tp.ID))
-			} else {
-				buf.WriteString(string(tp.ID))
-			}
-			buf.WriteString(`","`)
-			buf.WriteString(titleKey)
-			buf.WriteString(`":`)
-			// 只有主题内容会出现特殊转义字符,需要特殊方式加引号
-			buf.Write(strconv.AppendQuote(quote[:0], tp.Title))
 			buf.WriteString(`,"`)
 			buf.WriteString(parentKey)
 			buf.WriteString(`":"`)
@@ -333,14 +380,36 @@ func SaveCustom(sheet *Topic, idKey, titleKey, parentKey, isRootKey string,
 			} else {
 				buf.WriteString(string(tp.parent.ID))
 			}
-			buf.WriteString(`"`)
-			if rk&2 != 0 {
+			buf.WriteByte('"')
+
+			if rk&2 != 0 { // 添加isRoot字段
 				buf.WriteString(`,"`)
 				buf.WriteString(isRootKey)
 				buf.WriteString(`":false`)
 			}
-			buf.WriteByte('}')
 		}
+
+		buf.WriteString(`,"`)
+		buf.WriteString(notesKey)
+		buf.WriteString(`":"`) // 添加备注
+		if tp.Notes != nil && tp.Notes.Plain.Content != "" {
+			buf.WriteString(tp.Notes.Plain.Content)
+		}
+		buf.WriteByte('"')
+
+		buf.WriteString(`,"`)
+		buf.WriteString(labelsKey)
+		buf.WriteString(`":[`) // 添加标签
+		for i, vl := range tp.Labels {
+			if i > 0 {
+				buf.WriteByte(',')
+			}
+			buf.WriteByte('"')
+			buf.WriteString(vl)
+			buf.WriteByte('"')
+		}
+		buf.WriteString("]}")
+		return nil
 	})
 	buf.WriteByte(']')
 	str := buf.String()
