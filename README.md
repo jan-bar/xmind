@@ -11,7 +11,7 @@
 
 参考: [custom_test](example/custom_test.go)
 
-安装命令行工具: `go install github.com/jan-bar/xmind/cmd@latest`
+安装命令行工具: `go install github.com/jan-bar/xmind/cmd/xmind@latest`
 
 ## 示例
 * 自定义json数据创建xmind
