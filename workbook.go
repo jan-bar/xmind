@@ -287,6 +287,8 @@ func SaveSheets(path string, sheet ...*Topic) error {
 	return (&WorkBook{Topics: sheet}).Save(path)
 }
 
+var RootIsNull = errors.New("RootTopic is null")
+
 // SaveCustom 自定义字段,将数据写入指定对象中
 //  param
 //    sheet: xmind的sheet数据
@@ -307,10 +309,10 @@ func SaveSheets(path string, sheet ...*Topic) error {
 //  return
 //    error: 返回错误
 func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
-	genId func(id TopicID) string) (err error) {
+	genId func(id TopicID) string) error {
 	cent := sheet.On(CentKey)
 	if cent == nil {
-		return errors.New("RootTopic is null")
+		return RootIsNull
 	}
 
 	var (
@@ -391,11 +393,12 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 
 		buf.WriteString(`,"`)
 		buf.WriteString(notesKey)
-		buf.WriteString(`":"`) // 添加备注
+		buf.WriteString(`":`) // 添加备注
 		if tp.Notes != nil && tp.Notes.Plain.Content != "" {
-			buf.WriteString(tp.Notes.Plain.Content)
+			buf.Write(strconv.AppendQuote(quote[:0], tp.Notes.Plain.Content))
+		} else {
+			buf.WriteString(`""`)
 		}
-		buf.WriteByte('"')
 
 		buf.WriteString(`,"`)
 		buf.WriteString(labelsKey)
@@ -404,9 +407,7 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 			if i > 0 {
 				buf.WriteByte(',')
 			}
-			buf.WriteByte('"')
-			buf.WriteString(vl)
-			buf.WriteByte('"')
+			buf.Write(strconv.AppendQuote(quote[:0], vl))
 		}
 		buf.WriteString("]}")
 		return nil
@@ -421,7 +422,7 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 	case *[]byte:
 		*vt = []byte(str)
 	default:
-		err = json.Unmarshal([]byte(str), v)
+		return json.Unmarshal([]byte(str), v)
 	}
-	return
+	return nil
 }

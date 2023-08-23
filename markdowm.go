@@ -9,7 +9,10 @@ import (
 
 const (
 	DefaultMarkdownName   = "default"
-	DefaultMarkdownFormat = "{{Repeat \"#\" .Deep}} {{.Title}}\n\n{{range $i,$v := .Labels}}> {{$v}}\n\n{{end}}{{range $i,$v := (SplitLines .Notes \"\\n\\r\")}}> {{$v}}\n\n{{end}}"
+	DefaultMarkdownFormat = "{{Repeat \"#\" ." + MarkdownKeyDeep +
+		"}} {{." + CustomKeyTitle + "}}\n\n{{range $i,$v := ." + CustomKeyLabels +
+		"}}> {{$v}}\n\n{{end}}{{range $i,$v := (SplitLines ." + CustomKeyNotes +
+		" \"\\n\\r\")}}> {{$v}}\n\n{{end}}"
 
 	MarkdownKeyDeep = "Deep" // 所在层级,>=1
 )
@@ -50,7 +53,12 @@ func (wk *WorkBook) SaveToMarkdown(w io.Writer, format map[string]string) error 
 	}
 
 	for _, tp := range wk.Topics {
-		err = tp.Range(func(deep int, current *Topic) error {
+		cent := tp.On(CentKey)
+		if cent == nil {
+			return RootIsNull
+		}
+
+		err = cent.Range(func(deep int, current *Topic) error {
 			data := map[string]interface{}{
 				MarkdownKeyDeep: deep,
 				CustomKeyTitle:  current.Title,

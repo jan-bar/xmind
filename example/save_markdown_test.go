@@ -12,7 +12,7 @@ func TestSaveMarkdown(t *testing.T) {
 	st1 := xmind.NewSheet("sheet1", "main 1 topic")
 	st1.Add("123").Add("456").Add("789").OnTitle("123").
 		AddLabel("this is label1", "this is label2").
-		Add("2sc").Add("345").OnTitle("456").AddNotes("I'm notes").
+		Add("2sc").Add("345").OnTitle("456").AddNotes("I'm no\nte\rasds").
 		Add("xzcv").Add("ewr").OnTitle("789").Add("saf").Add("xcv")
 	st2 := xmind.NewSheet("sheet2", "main 2 topic")
 	st2.Add("aaa").Add("ewr")

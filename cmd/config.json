@@ -1,0 +1,25 @@
+{
+  "from": "recursive:../*.xmind",
+  "fromType": "xmind",
+  "fromCustom": {
+    "Id": "id",
+    "Title": "title",
+    "ParentId": "parentId",
+    "IsRoot": "isRoot",
+    "Labels": "labels",
+    "Notes": "notes"
+  },
+  "to": "../convert/out",
+  "toType": "custom",
+  "toCustom": {
+    "Id": "id",
+    "Title": "title",
+    "ParentId": "parentId",
+    "IsRoot": "isRoot",
+    "Labels": "labels",
+    "Notes": "notes"
+  },
+  "toMarkdown": {
+    "default": "{{Repeat \"#\" .Deep}} {{.Title}}\n\n{{range $i,$v := .Labels}}> {{$v}}\n\n{{end}}{{range $i,$v := (SplitLines .Notes \"\\n\\r\")}}> {{$v}}\n\n{{end}}"
+  }
+}

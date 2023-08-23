@@ -74,9 +74,9 @@ func TestLoadCustom(t *testing.T) {
 func TestSaveCustom(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		st := xmind.NewSheet("sheet1", "main topic")
-		st.Add("123").AddLabel("label1").Add("456").OnTitle("123").
+		st.Add("123").AddLabel("label1\nlabel2").Add("456").OnTitle("123").
 			Add("111").Add("222").
-			OnTitle("456").Add("xzc").Add("wqer").AddNotes("notes")
+			OnTitle("456").Add("xzc").Add("wqer").AddNotes("notes1\nnotes2")
 
 		var data []byte // 直接将sheet对象转换为自定义json结构,也可用 `var data string` 获取字符串
 		err := xmind.SaveCustom(st, map[string]string{
