@@ -2,6 +2,7 @@ package xmind
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -18,17 +19,48 @@ import (
 // 当文件为
 //    *.xmind 时会尝试读取压缩包的[content.json,content.xml]文件
 //    *.*     时会直接按照[*.json,*.xml]这几种格式读取
-//goland:noinspection GoUnhandledErrorResult
 func LoadFile(path string) (*WorkBook, error) {
 	fr, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer fr.Close()
 
-	fi, err := fr.Stat()
+	wk, err := LoadFrom(fr)
+	_ = fr.Close()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("file: %q, %w", path, err)
+	}
+	return wk, nil
+}
+
+// LoadFrom 从文件或io.Reader对象中加载xmind
+func LoadFrom(input interface{}) (*WorkBook, error) {
+	var (
+		read interface {
+			io.ReaderAt
+			io.Seeker
+			io.Reader
+		}
+		size int64
+	)
+
+	switch r := input.(type) {
+	case *os.File:
+		fi, err := r.Stat()
+		if err != nil {
+			return nil, err
+		}
+		// 读取文件对象
+		read, size = r, fi.Size()
+	case io.Reader:
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		// 处理更通用的io.Reader对象,会将所有数据读入内存
+		read, size = bytes.NewReader(data), int64(len(data))
+	default:
+		return nil, errors.New("input type not supported")
 	}
 
 	var wb WorkBook
@@ -57,19 +89,24 @@ func LoadFile(path string) (*WorkBook, error) {
 		wb.Topics = sheets
 	}()
 
-	zr, err := zip.NewReader(fr, fi.Size())
+	zr, err := zip.NewReader(read, size)
 	if err == nil {
 		rz, err := zr.Open(ContentJson)
 		if err == nil {
+			//goland:noinspection GoUnhandledErrorResult
 			defer rz.Close()
+
 			err = json.NewDecoder(rz).Decode(&wb.Topics)
 			if err == nil {
 				return &wb, nil // 尝试读取zip中的content.json文件成功
 			}
 		}
+
 		rz, err = zr.Open(ContentXml)
 		if err == nil {
+			//goland:noinspection GoUnhandledErrorResult
 			defer rz.Close()
+
 			err = xml.NewDecoder(rz).Decode(&wb)
 			if err == nil {
 				return &wb, nil // 尝试读取zip中的content.xml文件成功
@@ -78,7 +115,7 @@ func LoadFile(path string) (*WorkBook, error) {
 	}
 
 	seekFile := func(f func() error) error {
-		_, err := fr.Seek(0, io.SeekStart)
+		_, err = read.Seek(0, io.SeekStart)
 		if err != nil {
 			return err
 		}
@@ -86,17 +123,17 @@ func LoadFile(path string) (*WorkBook, error) {
 	}
 
 	if err = seekFile(func() error {
-		return json.NewDecoder(fr).Decode(&wb.Topics)
+		return json.NewDecoder(read).Decode(&wb.Topics)
 	}); err == nil {
 		return &wb, nil // 尝试直接用json方式读取成功
 	}
 
 	if err = seekFile(func() error {
-		return xml.NewDecoder(fr).Decode(&wb)
+		return xml.NewDecoder(read).Decode(&wb)
 	}); err == nil {
 		return &wb, nil // 尝试直接用xml方式读取成功
 	}
-	return nil, fmt.Errorf("can not read %s", path)
+	return nil, errors.New("can not read xmind")
 }
 
 const (
@@ -233,6 +270,24 @@ func LoadCustom(data interface{}, custom map[string]string) (sheet *Topic, err e
 		}
 	}
 	return
+}
+
+// LoadCustomWorkbook 加载自定义workbook的json
+func LoadCustomWorkbook(input io.Reader, custom map[string]string) (*WorkBook, error) {
+	var data []json.RawMessage
+	err := json.NewDecoder(input).Decode(&data)
+	if err != nil {
+		return nil, err
+	}
+
+	tps := make([]*Topic, len(data))
+	for i, v := range data {
+		tps[i], err = LoadCustom([]byte(v), custom)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &WorkBook{Topics: tps}, nil
 }
 
 func (wk *WorkBook) check() error {
@@ -425,4 +480,39 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 		return json.Unmarshal([]byte(str), v)
 	}
 	return nil
+}
+
+// SaveCustomWorkbook 保存workbook到自定义json中
+func SaveCustomWorkbook(output io.Writer, wk *WorkBook,
+	custom map[string]string, genId func(id TopicID) string) error {
+	tmp := []byte{'['}
+	_, err := output.Write(tmp)
+	if err != nil {
+		return err
+	}
+
+	tmp[0] = ','
+	var data []byte
+	for i, tp := range wk.Topics {
+		if i > 0 {
+			_, err = output.Write(tmp)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = SaveCustom(tp, custom, &data, genId)
+		if err != nil {
+			return err
+		}
+
+		_, err = output.Write(data)
+		if err != nil {
+			return err
+		}
+	}
+
+	tmp[0] = ']'
+	_, err = output.Write(tmp)
+	return err
 }

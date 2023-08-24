@@ -24,21 +24,21 @@ type (
 		parent    *Topic             // 父节点地址
 		incr      *int               // 只用于自增id,生成不重复的默认主题内容
 
+		RootTopic      *Topic         `json:"rootTopic,omitempty" xml:"topic"`
+		Children       *Children      `json:"children,omitempty" xml:"children,omitempty"`
+		Notes          *Notes         `json:"notes,omitempty" xml:"notes,omitempty"`
 		ID             TopicID        `json:"id" xml:"id,attr"`
 		Title          string         `json:"title" xml:"title"`
-		RootTopic      *Topic         `json:"rootTopic,omitempty" xml:"topic"`
-		Style          Style          `json:"style"`
 		StructureClass StructureClass `json:"structureClass,omitempty" xml:"structure-class,attr"`
-		Children       *Children      `json:"children,omitempty" xml:"children,omitempty"`
+		Style          Style          `json:"style"`
 		Labels         []string       `json:"labels,omitempty" xml:"labels>label,omitempty"`
-		Notes          *Notes         `json:"notes,omitempty" xml:"notes,omitempty"`
 	}
 
 	TopicID string
 
 	Style struct {
-		Id         TopicID  `json:"id"`
 		Properties struct{} `json:"properties"`
+		Id         TopicID  `json:"id"`
 	}
 
 	Children struct {

@@ -80,22 +80,10 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
+			//goland:noinspection GoUnhandledErrorResult
+			defer fr.Close()
 
-			var data []json.RawMessage
-			err = json.NewDecoder(fr).Decode(&data)
-			_ = fr.Close()
-			if err != nil {
-				return nil, err
-			}
-
-			tps := make([]*xmind.Topic, len(data))
-			for i, v := range data {
-				tps[i], err = xmind.LoadCustom([]byte(v), config.FromCustom)
-				if err != nil {
-					return nil, err
-				}
-			}
-			return &xmind.WorkBook{Topics: tps}, nil
+			return xmind.LoadCustomWorkbook(fr, config.FromCustom)
 		}
 	}
 
@@ -121,33 +109,7 @@ func main() {
 			//goland:noinspection GoUnhandledErrorResult
 			defer fw.Close()
 
-			_, err = fw.WriteString("[")
-			if err != nil {
-				return err
-			}
-
-			var data []byte
-			for i, tp := range wk.Topics {
-				if i > 0 {
-					_, err = fw.WriteString(",")
-					if err != nil {
-						return err
-					}
-				}
-
-				err = xmind.SaveCustom(tp, config.ToCustom, &data, nil)
-				if err != nil {
-					return err
-				}
-
-				_, err = fw.Write(data)
-				if err != nil {
-					return err
-				}
-			}
-
-			_, err = fw.WriteString("]")
-			return err
+			return xmind.SaveCustomWorkbook(fw, wk, config.ToCustom, nil)
 		}
 		saveExt = ".json"
 	case "markdown": // 保存为markdown文件
@@ -172,21 +134,24 @@ func main() {
 			log.Fatal(err)
 		}
 
-		genTo = func(s string) (string, error) {
-			if base == "" { // 非递归方式,所有文件都保存在目标文件夹同级
+		if base == "" {
+			genTo = func(s string) (string, error) {
+				// 非递归方式,所有文件都保存在目标文件夹同级
 				return filepath.Join(config.To, filepath.Base(s)+saveExt), nil
 			}
-
-			rel, err := filepath.Rel(base, s)
-			if err != nil {
-				return "", err
+		} else {
+			genTo = func(s string) (string, error) {
+				rel, err := filepath.Rel(base, s)
+				if err != nil {
+					return "", err
+				}
+				tDir := filepath.Join(config.To, filepath.Dir(rel))
+				if err = os.MkdirAll(tDir, 0666); err != nil {
+					return "", err
+				}
+				// 递归查找出来的文件,保存时也放到目标目录的相对路径下
+				return filepath.Join(tDir, filepath.Base(s)+saveExt), nil
 			}
-			tDir := filepath.Join(config.To, filepath.Dir(rel))
-			if err = os.MkdirAll(tDir, 0666); err != nil {
-				return "", err
-			}
-			// 递归查找出来的文件,保存时也放到目标目录的相对路径下
-			return filepath.Join(tDir, filepath.Base(s)+saveExt), nil
 		}
 	} else {
 		genTo = func(s string) (string, error) {

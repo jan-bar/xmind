@@ -81,6 +81,7 @@ func TestCreateStruct(t *testing.T) {
 	}
 }
 
+// go test -v -run TestSaveJson
 func TestSaveJson(t *testing.T) {
 	st1 := xmind.NewSheet("sheet1", "main 1 topic")
 	st1.Add("123").Add("456").Add("789").OnTitle("123").
@@ -103,7 +104,8 @@ func TestSaveJson(t *testing.T) {
 	}
 }
 
-func TestName(t *testing.T) {
+// go test -v -run TestSaveWorkBook
+func TestSaveWorkBook(t *testing.T) {
 	st1 := &xmind.Topic{
 		Title: "sheet1",
 		RootTopic: &xmind.Topic{
