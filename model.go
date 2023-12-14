@@ -32,6 +32,7 @@ type (
 		StructureClass StructureClass `json:"structureClass,omitempty" xml:"structure-class,attr"`
 		Style          Style          `json:"style"`
 		Labels         []string       `json:"labels,omitempty" xml:"labels>label,omitempty"`
+		Branch         string         `json:"branch,omitempty" xml:"branch,attr"`
 	}
 
 	TopicID string

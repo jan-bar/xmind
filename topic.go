@@ -501,3 +501,8 @@ func (st *Topic) AddNotes(notes string) *Topic {
 	}
 	return st
 }
+
+func (st *Topic) SetFold() *Topic {
+	st.Branch = "folded"
+	return st
+}
