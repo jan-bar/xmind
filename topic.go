@@ -12,12 +12,13 @@ const (
 )
 
 // NewSheet 创建一个画布
-//  param
-//    sheetTitle: 画布名称
-//    centralTopicTitle: 中心主题
-//    structureClass: 整体样式
-//  return
-//    *Topic: 中心主题地址
+//
+//	param
+//		sheetTitle: 画布名称
+//		centralTopicTitle: 中心主题
+//		structureClass: 整体样式
+//	return
+//		*Topic: 中心主题地址
 func NewSheet(sheetTitle, centralTopicTitle string, structureClass ...StructureClass) *Topic {
 	sc := StructLogicRight
 	if len(structureClass) > 0 {
@@ -46,10 +47,11 @@ func NewSheet(sheetTitle, centralTopicTitle string, structureClass ...StructureC
 }
 
 // UpSheet 更新画布,可以在任何节点主题执行
-//  param
-//    sheetTitle: 画布名称
-//    centralTopicTitle: 中心主题
-//    structureClass: 整体样式
+//
+//	param
+//		sheetTitle: 画布名称
+//		centralTopicTitle: 中心主题
+//		structureClass: 整体样式
 func (st *Topic) UpSheet(sheetTitle, centralTopicTitle string, structureClass ...StructureClass) {
 	if st == nil {
 		return
@@ -70,10 +72,11 @@ func (st *Topic) UpSheet(sheetTitle, centralTopicTitle string, structureClass ..
 }
 
 // On 根据主题ID切换主题地址
-//  param
-//    componentId: 主题ID,不传时切换到中心主题
-//  return
-//    *Topic: 匹配主题地址
+//
+//	param
+//		componentId: 主题ID,不传时切换到中心主题
+//	return
+//		*Topic: 匹配主题地址
 func (st *Topic) On(componentId ...TopicID) *Topic {
 	if st == nil || st.resources == nil {
 		return st // 资源为空只可能是使用者直接使用 Topic 对象,尽量使用接口
@@ -92,10 +95,11 @@ func (st *Topic) On(componentId ...TopicID) *Topic {
 }
 
 // OnTitle 根据主题内容切换主题地址
-//  param
-//    title: 主题内容,为空时切换到中心主题
-//  return
-//    *Topic: 匹配主题地址
+//
+//	param
+//		title: 主题内容,为空时切换到中心主题
+//	return
+//		*Topic: 匹配主题地址
 func (st *Topic) OnTitle(title string) *Topic {
 	return st.On(st.CId(title)) // 两个操作合并为一个,方便使用
 }
@@ -140,11 +144,12 @@ func (am AddMode) In() AddMode {
 }
 
 // Add 为当前主题添加主题
-//  param
-//    title: 主题内容
-//    mode: 添加主题方式,不传则默认添加子主题
-//  return
-//    *Topic: 当前主题地址
+//
+//	param
+//		title: 主题内容
+//		mode: 添加主题方式,不传则默认添加子主题
+//	return
+//		*Topic: 当前主题地址
 func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 	if st == nil || st.parent == nil {
 		// 父节点为nil表示当前节点在root根节点,该节点不支持添加子主题
@@ -221,11 +226,12 @@ func (st *Topic) Add(title string, modes ...AddMode) *Topic {
 }
 
 // Move 将指定节点移动到当前节点对应位置
-//  param
-//    componentId: 要移动过来的节点
-//    modes: 移动过来的添加方式,不传则默认移动为最后一个子主题
-//  return
-//    *Topic: 当前主题地址
+//
+//	param
+//		componentId: 要移动过来的节点
+//		modes: 移动过来的添加方式,不传则默认移动为最后一个子主题
+//	return
+//		*Topic: 当前主题地址
 func (st *Topic) Move(componentId TopicID, modes ...AddMode) *Topic {
 	if st == nil || st.parent == nil || !componentId.IsOrdinary() {
 		return st // 同 Add 根节点不支持操作,内部的特殊节点不支持移动操作
@@ -310,19 +316,22 @@ func (st *Topic) Move(componentId TopicID, modes ...AddMode) *Topic {
 }
 
 // Remove 删除指定主题内容节点
-//  param
-//    title: 待删除子主题内容
-//  return
-//    *Topic: 当前主题地址
+//
+//	param
+//		title: 待删除子主题内容
+//	return
+//		*Topic: 当前主题地址
 func (st *Topic) Remove(title string) *Topic {
 	return st.RemoveByID(st.CId(title))
 }
 
 // RemoveByID 删除指定主题ID的节点
-//  param
-//    title: 待删除子主题内容
-//  return
-//    *Topic: 当前主题地址
+//
+//	param
+//		title: 待删除子主题内容
+//	return
+//		*Topic: 当前主题地址
+//
 // 特别注意,删除主题成功会自动定位到中心主题上,如果需要切换需要显示使用 On 操作
 func (st *Topic) RemoveByID(componentId TopicID) *Topic {
 	if st == nil || !componentId.IsOrdinary() {
@@ -383,10 +392,11 @@ func (st *Topic) upChildren() {
 }
 
 // CId 根据主题内容获取第一个匹配到的主题ID
-//  param
-//    title: 主题内容
-//  return
-//    TopicID: 匹配title的主题ID,有多个相同title时只返回第一个匹配成功的结果
+//
+//	param
+//		title: 主题内容
+//	return
+//		TopicID: 匹配title的主题ID,有多个相同title时只返回第一个匹配成功的结果
 func (st *Topic) CId(title string) TopicID {
 	if title == "" {
 		return CentKey
@@ -404,10 +414,11 @@ func (st *Topic) CId(title string) TopicID {
 }
 
 // CIds 根据主题内容获取所有匹配到的主题ID
-//  param
-//    title: 主题内容
-//  return
-//    res: 匹配到title的所有主题ID
+//
+//	param
+//		title: 主题内容
+//	return
+//		res: 匹配到title的所有主题ID
 func (st *Topic) CIds(title string) (res []TopicID) {
 	if title == "" {
 		return []TopicID{CentKey} // 默认返回一个中心主题
@@ -427,15 +438,17 @@ func (st *Topic) CIds(title string) (res []TopicID) {
 }
 
 // IsCent 判断当前节点是中心主题
-//  return
-//    bool: true表示该节点为中心主题,否则为普通节点
+//
+//	return
+//		bool: true表示该节点为中心主题,否则为普通节点
 func (st *Topic) IsCent() bool {
 	return st != nil && st == st.resources[CentKey]
 }
 
 // Range 从当前节点递归遍历子节点
-//  param
-//    f: 外部的回调
+//
+//	param
+//		f: 外部的回调
 func (st *Topic) Range(f func(int, *Topic) error) error {
 	if st != nil {
 		var loop func(int, *Topic) error
@@ -464,8 +477,9 @@ func (st *Topic) Range(f func(int, *Topic) error) error {
 }
 
 // Resources 返回所有主题的ID和内容资源
-//  return
-//    res: 返回所有主题ID和资源
+//
+//	return
+//		res: 返回所有主题ID和资源
 func (st *Topic) Resources() map[TopicID]string {
 	res := make(map[TopicID]string)
 	if st != nil {
@@ -479,10 +493,11 @@ func (st *Topic) Resources() map[TopicID]string {
 }
 
 // AddLabel 在当前主题上加label标签
-//  param
-//    label: 标签内容
-//  return
-//    *Topic: 当前主题地址
+//
+//	param
+//		label: 标签内容
+//	return
+//		*Topic: 当前主题地址
 func (st *Topic) AddLabel(label ...string) *Topic {
 	if len(label) > 0 {
 		st.Labels = label
@@ -491,13 +506,69 @@ func (st *Topic) AddLabel(label ...string) *Topic {
 }
 
 // AddNotes 在当前主题上加notes备注
-//  param
-//    Notes: 备注内通内容
-//  return
-//    *Topic: 当前主题地址
+//
+//	param
+//		notes: 备注内容
+//	return
+//		*Topic: 当前主题地址
 func (st *Topic) AddNotes(notes string) *Topic {
 	if notes != "" {
 		st.Notes = &Notes{Plain: ContentStruct{Content: notes}}
+	}
+	return st
+}
+
+// AddHref 在当前主题上加超链接
+//
+//	param
+//		href: 超链接地址
+//	return
+//		*Topic: 当前主题地址
+//
+//	网络超链接: AddHref("https://baidu.com"), 网址
+//	文件超链接: AddHref("file:文件路径")
+//		AddHref("file:content.json"), 相对路径,会打开当前xmind目录的content.json文件
+//		AddHref("file://D:/content.json"), 绝对路径,会打开D:/content.json文件,路径分隔符为'/'
+//	主题超链接: AddHref("xmind:#" + string(st2.CId("title"))), 链接到其他主题
+func (st *Topic) AddHref(href string) *Topic {
+	if href != "" {
+		st.Href = href
+	}
+	return st
+}
+
+// Folded 收缩主题
+//
+//	param
+//	  all: 收缩所有子主题
+//	return
+//	  *Topic: 当前主题地址
+func (st *Topic) Folded(all ...bool) *Topic {
+	const folded = "folded"
+
+	st.Branch = folded
+	if len(all) > 0 && all[0] {
+		_ = st.Range(func(_ int, topic *Topic) error {
+			topic.Branch = folded
+			return nil
+		})
+	}
+	return st
+}
+
+// UnFolded 展开主题
+//
+//	param
+//	  all: 展开所有子主题
+//	return
+//	  *Topic: 当前主题地址
+func (st *Topic) UnFolded(all ...bool) *Topic {
+	st.Branch = ""
+	if len(all) > 0 && all[0] {
+		_ = st.Range(func(_ int, topic *Topic) error {
+			topic.Branch = ""
+			return nil
+		})
 	}
 	return st
 }

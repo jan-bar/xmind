@@ -16,6 +16,8 @@ func TestCreateXmind(t *testing.T) {
 		Add("2sc").Add("345").OnTitle("456").AddNotes("I'm notes").
 		Add("xzcv").Add("ewr").OnTitle("789").Add("saf").Add("xcv")
 
+	st1.OnTitle("123").AddHref("https://baidu.com").On().Folded(true)
+
 	st2 := xmind.NewSheet("sheet2", "main 2 topic")
 	st2.Add("aaa").Add("ewr")
 	st2.OnTitle("ewr").Title = "xx-ewr\txvf\nwer" // 修改指定主题内容,其中包含特殊转义字符
@@ -24,6 +26,8 @@ func TestCreateXmind(t *testing.T) {
 		Add("cxv", xmind.BeforeMode). // 在节点之前添加兄弟节点
 		Add("xcas", xmind.AfterMode). // 在节点之后添加兄弟节点
 		OnTitle("cvxcv").Add("34").Add("xcv")
+
+	st2.On().Folded(true)
 
 	err := xmind.SaveSheets("TestCreateXmind.xmind", st1, st2)
 	if err != nil {

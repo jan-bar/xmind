@@ -19,6 +19,8 @@ type (
 		Topics  []*Topic `json:"sheet" xml:"sheet"`
 	}
 
+	// Topic 定义内容参考xmind官方ts实现,参考如下代码
+	// https://github.com/xmindltd/xmind-sdk-js/blob/master/src/common/model.ts#L121
 	Topic struct {
 		resources map[TopicID]*Topic // 记录所有主题的资源,所有主题共用同一个
 		parent    *Topic             // 父节点地址
@@ -29,6 +31,8 @@ type (
 		Notes          *Notes         `json:"notes,omitempty" xml:"notes,omitempty"`
 		ID             TopicID        `json:"id" xml:"id,attr"`
 		Title          string         `json:"title" xml:"title"`
+		Branch         string         `json:"branch,omitempty" xml:"branch,attr"`
+		Href           string         `json:"href,omitempty" xml:"xlink:href,attr"`
 		StructureClass StructureClass `json:"structureClass,omitempty" xml:"structure-class,attr"`
 		Style          Style          `json:"style"`
 		Labels         []string       `json:"labels,omitempty" xml:"labels>label,omitempty"`
@@ -37,8 +41,9 @@ type (
 	TopicID string
 
 	Style struct {
-		Properties struct{} `json:"properties"`
-		Id         TopicID  `json:"id"`
+		Properties interface{} `json:"properties"`
+		Id         TopicID     `json:"id"`
+		Type       string      `json:"type"`
 	}
 
 	Children struct {
