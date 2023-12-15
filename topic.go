@@ -397,20 +397,34 @@ func (st *Topic) upChildren() {
 //		title: 主题内容
 //	return
 //		TopicID: 匹配title的主题ID,有多个相同title时只返回第一个匹配成功的结果
-func (st *Topic) CId(title string) TopicID {
+func (st *Topic) CId(title string) (res TopicID) {
 	if title == "" {
 		return CentKey
 	}
 
+	res = lastKey // 匹配不到返回最后一次编辑的主题ID
 	if st != nil {
-		for id, topic := range st.resources {
-			// 由于range遍历乱序因此,不保证存在多个title时按照之前添加顺序返回
-			if id.IsOrdinary() && topic.Title == title {
-				return id // 判断ID长度,剔除特殊ID
+		err := fmt.Errorf("find node")
+
+		_ = st.Range(func(_ int, topic *Topic) error {
+			if topic.Title == title {
+				res = topic.ID // 当前节点遍历子节点,找到则终止递归
+				return err
 			}
+			return nil
+		})
+
+		if res == lastKey {
+			_ = st.resources[CentKey].Range(func(_ int, topic *Topic) error {
+				if topic.Title == title {
+					res = topic.ID // 中心主题遍历子节点,找到则终止递归
+					return err
+				}
+				return nil
+			})
 		}
 	}
-	return lastKey // 匹配不到返回最后一次编辑的主题ID
+	return
 }
 
 // CIds 根据主题内容获取所有匹配到的主题ID
@@ -425,12 +439,23 @@ func (st *Topic) CIds(title string) (res []TopicID) {
 	}
 
 	if st != nil {
-		for id, topic := range st.resources {
-			if id.IsOrdinary() && topic.Title == title {
-				res = append(res, id) // 判断ID长度,剔除特殊ID
+		_ = st.Range(func(_ int, topic *Topic) error {
+			if topic.Title == title {
+				res = append(res, topic.ID)
 			}
+			return nil
+		})
+		// 子节点匹配到则只返回子节点匹配数据,否则从中心主题遍历全部子节点
+		if len(res) == 0 {
+			_ = st.resources[CentKey].Range(func(_ int, topic *Topic) error {
+				if topic.Title == title {
+					res = append(res, topic.ID)
+				}
+				return nil
+			})
 		}
 	}
+
 	if len(res) == 0 {
 		return []TopicID{lastKey} // 匹配不到返回最后编辑主题
 	}
@@ -476,20 +501,36 @@ func (st *Topic) Range(f func(int, *Topic) error) error {
 	return nil
 }
 
-// Resources 返回所有主题的ID和内容资源
+// Resources 返回所有资源信息副本
 //
 //	return
-//		res: 返回所有主题ID和资源
-func (st *Topic) Resources() map[TopicID]string {
-	res := make(map[TopicID]string)
+//		res: 资源信息
+func (st *Topic) Resources() (res map[TopicID]*Topic) {
 	if st != nil {
+		res = make(map[TopicID]*Topic, len(st.resources))
+		// 返回副本,修改返回值不会影响当前对象
 		for id, topic := range st.resources {
-			if id.IsOrdinary() {
-				res[id] = topic.Title // 只返回正常的节点资源
+			res[id] = &Topic{
+				ID:     topic.ID,
+				Title:  topic.Title,
+				Branch: topic.Branch,
+				Href:   topic.Href,
+				Labels: append([]string(nil), topic.Labels...),
+				Style:  topic.Style,
+
+				StructureClass: topic.StructureClass,
+			}
+
+			if topic.Notes != nil {
+				res[id].Notes = &Notes{Plain: ContentStruct{
+					Content: topic.Notes.Plain.Content,
+				}}
 			}
 		}
+	} else {
+		res = make(map[TopicID]*Topic)
 	}
-	return res
+	return
 }
 
 // AddLabel 在当前主题上加label标签
@@ -538,6 +579,7 @@ func (st *Topic) AddHref(href string) *Topic {
 }
 
 const folded = "folded"
+
 // Folded 收缩主题
 //
 //	param
