@@ -27,15 +27,15 @@ type (
 		incr      *int               // 只用于自增id,生成不重复的默认主题内容
 
 		RootTopic      *Topic         `json:"rootTopic,omitempty" xml:"topic"`
-		Children       *Children      `json:"children,omitempty" xml:"children,omitempty"`
-		Notes          *Notes         `json:"notes,omitempty" xml:"notes,omitempty"`
+		Children       *Children      `json:"children,omitempty" xml:"children"`
+		Notes          *Notes         `json:"notes,omitempty" xml:"notes"`
 		ID             TopicID        `json:"id" xml:"id,attr"`
 		Title          string         `json:"title" xml:"title"`
 		Branch         string         `json:"branch,omitempty" xml:"branch,attr"`
 		Href           string         `json:"href,omitempty" xml:"xlink:href,attr"`
 		StructureClass StructureClass `json:"structureClass,omitempty" xml:"structure-class,attr"`
 		Style          Style          `json:"style"`
-		Labels         []string       `json:"labels,omitempty" xml:"labels>label,omitempty"`
+		Labels         []string       `json:"labels,omitempty" xml:"labels>label"`
 	}
 
 	TopicID string

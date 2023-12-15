@@ -16,9 +16,9 @@ import (
 )
 
 // LoadFile 从文件加载xmind数据
-// 当文件为
-//    *.xmind 时会尝试读取压缩包的[content.json,content.xml]文件
-//    *.*     时会直接按照[*.json,*.xml]这几种格式读取
+//
+//	*.xmind 时会尝试读取压缩包的[content.json,content.xml]文件
+//	*.*     时会直接按照[*.json,*.xml]这几种格式读取
 func LoadFile(path string) (*WorkBook, error) {
 	fr, err := os.Open(path)
 	if err != nil {
@@ -143,46 +143,51 @@ const (
 	CustomKeyIsRoot   = "IsRoot"
 	CustomKeyLabels   = "Labels"
 	CustomKeyNotes    = "Notes"
+	CustomKeyBranch   = "Branch"
+	CustomKeyHref     = "Href"
 )
 
 // LoadCustom 根据符合要求的任意结构加载
-//  param
-//    data:
-//      方式1:
-//        使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
-//        LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},map[string]string{
-//          CustomKeyId:       "id",
-//          CustomKeyTitle:    "topic",
-//          CustomKeyParentId: "parentId",
-//        })
-//        测试如下结构
-//        type Nodes struct {
-//           ID       string `json:"id"`
-//           Topic    string `json:"topic"`
-//           ParentId string `json:"parentId"`
-//           Labels []string `json:"labels"`
-//           Notes    string `json:"notes"`
-//        }
-//      方式2:
-//        传json string: data := `[
-//          {"a":"1","b":"main topic","labels":["l1","l2"],"notes":"notes"},
-//          {"a":"2","b":"topic1","c":"1"},
-//          {"a":"3","b":"topic2","c":"1"},
-//          {"a":"4","b":"topic3","c":"2"},
-//          {"a":"5","b":"topic4","c":"2"},
-//          {"a":"6","b":"topic5","c":"3"},
-//          {"a":"7","b":"topic6","c":"3"}]`
-//        LoadCustom(data,map[string]string{
-//          CustomKeyId:       "id",       // 以该json tag字段作为主题ID
-//          CustomKeyTitle:    "topic",    // 以该json tag字段作为主题内容
-//          CustomKeyParentId: "parentId", // 以该json tag字段作为判断父节点的依据
-//          CustomKeyIsRoot:   "isRoot",   // 以该json tag字段,bool类型,true表示根节点,false表示普通节点
-//          CustomKeyLabels:   "labels",   // 以该json tag字段作为主题标签
-//          CustomKeyNotes:    "notes",    // 以该json tag字段作为主题备注
-//        })
-//  return
-//    *Topic: 生成的主题地址
-//    error: 返回错误
+//
+//	param
+//	  data:
+//	    方式1:
+//	      使用如下方式进行调用,根节点没有父节点,其他节点均设置父节点ID
+//	      LoadCustom([]Nodes{{"root","top"},{"123","one","root"}},map[string]string{
+//	        CustomKeyId:       "id",
+//	        CustomKeyTitle:    "topic",
+//	        CustomKeyParentId: "parentId",
+//	      })
+//	      测试如下结构
+//	      type Nodes struct {
+//	         ID       string `json:"id"`
+//	         Topic    string `json:"topic"`
+//	         ParentId string `json:"parentId"`
+//	         Labels []string `json:"labels"`
+//	         Notes    string `json:"notes"`
+//	      }
+//	    方式2:
+//	      传json string: data := `[
+//	        {"a":"1","b":"main topic","labels":["l1","l2"],"notes":"notes"},
+//	        {"a":"2","b":"topic1","c":"1"},
+//	        {"a":"3","b":"topic2","c":"1"},
+//	        {"a":"4","b":"topic3","c":"2"},
+//	        {"a":"5","b":"topic4","c":"2"},
+//	        {"a":"6","b":"topic5","c":"3"},
+//	        {"a":"7","b":"topic6","c":"3"}]`
+//	      LoadCustom(data,map[string]string{
+//	        CustomKeyId:       "id",       // 以该json tag字段作为主题ID
+//	        CustomKeyTitle:    "topic",    // 以该json tag字段作为主题内容
+//	        CustomKeyParentId: "parentId", // 以该json tag字段作为判断父节点的依据
+//	        CustomKeyIsRoot:   "isRoot",   // 以该json tag字段,bool类型,true表示根节点,false表示普通节点
+//	        CustomKeyLabels:   "labels",   // 以该json tag字段作为主题标签
+//	        CustomKeyNotes:    "notes",    // 以该json tag字段作为主题备注
+//	        CustomKeyBranch:   "branch",   // 以该json tag字段作为主题折叠状态
+//	        CustomKeyHref:     "href",     // 以该json tag字段作为主题超链接
+//	      })
+//	return
+//	  *Topic: 生成的主题地址
+//	  error: 返回错误
 func LoadCustom(data interface{}, custom map[string]string) (sheet *Topic, err error) {
 	var byteData []byte
 	switch td := data.(type) {
@@ -220,6 +225,14 @@ func LoadCustom(data interface{}, custom map[string]string) (sheet *Topic, err e
 			Name: CustomKeyNotes, Type: strType,
 			Tag: reflect.StructTag(`json:"` + custom[CustomKeyNotes] + `"`),
 		},
+		{
+			Name: CustomKeyBranch, Type: strType,
+			Tag: reflect.StructTag(`json:"` + custom[CustomKeyBranch] + `"`),
+		},
+		{
+			Name: CustomKeyHref, Type: strType,
+			Tag: reflect.StructTag(`json:"` + custom[CustomKeyHref] + `"`),
+		},
 	}
 
 	isRootKey, hasRoot := custom[CustomKeyIsRoot]
@@ -256,15 +269,20 @@ func LoadCustom(data interface{}, custom map[string]string) (sheet *Topic, err e
 		parentId := stu.Field(2).String()
 		labels := stu.Field(3).Interface().([]string)
 		notes := stu.Field(4).String()
+		branch := stu.Field(5).String()
+		href := stu.Field(6).String()
 
 		// 优先根据IsRoot字段判断当前节点是根节点
-		if (hasRoot && stu.Field(5).Bool()) || parentId == "" {
+		if (hasRoot && stu.Field(7).Bool()) || parentId == "" {
 			sheet = NewSheet("sheet", title)
 			idMap[id] = CentKey // 建立中心主题ID映射关系
 		} else {
-			last := sheet.On(idMap[parentId]).
-				Add(title).AddLabel(labels...).
-				AddNotes(notes).Children.Attached
+			find := sheet.On(idMap[parentId]).Add(title).AddLabel(labels...).
+				AddHref(href).AddNotes(notes)
+			if branch == folded {
+				find.Folded() // 收缩主题
+			}
+			last := find.Children.Attached
 			// 将刚才添加的子主题ID建立映射关系,刚添加的子主题一定是最后一个
 			idMap[id] = last[len(last)-1].ID
 		}
@@ -345,24 +363,25 @@ func SaveSheets(path string, sheet ...*Topic) error {
 var RootIsNull = errors.New("RootTopic is null")
 
 // SaveCustom 自定义字段,将数据写入指定对象中
-//  param
-//    sheet: xmind的sheet数据
-//    custom: map[string]string{
-//      CustomKeyId:       "id",     // 以该json tag字段作为主题ID
-//      CustomKeyTitle:    "title",  // 以该json tag字段作为主题内容
-//      CustomKeyParentId: "parent", // 以该json tag字段作为判断父节点的依据
-//          // "parentId",表示根节点不添加父节点id
-//          // "parentId,xx",表示根节点添加值为空的父节点id
-//      CustomKeyIsRoot: "isRoot",   // 以该json tag字段,true表示为根节点
-//          // "",表示所有节点都不添加
-//          // "isRoot,xx",表示只添加根节点
-//      CustomKeyLabels: "labels", // 以该json tag字段作为标签
-//      CustomKeyNotes:  "notes",  // 以该json tag字段作为备注
-//    }
-//    v: 可以为 *string,*[]byte,*[]Nodes{} 这几种类型
-//    genId: 外部自定义生成id方案,自动生成的id是参照xmind,可能有点长
-//  return
-//    error: 返回错误
+//
+//	param
+//	  sheet: xmind的sheet数据
+//	  custom: map[string]string{
+//	    CustomKeyId:       "id",     // 以该json tag字段作为主题ID
+//	    CustomKeyTitle:    "title",  // 以该json tag字段作为主题内容
+//	    CustomKeyParentId: "parent", // 以该json tag字段作为判断父节点的依据
+//	        // "parentId",表示根节点不添加父节点id
+//	        // "parentId,xx",表示根节点添加值为空的父节点id
+//	    CustomKeyIsRoot: "isRoot",   // 以该json tag字段,true表示为根节点
+//	        // "",表示所有节点都不添加
+//	        // "isRoot,xx",表示只添加根节点
+//	    CustomKeyLabels: "labels", // 以该json tag字段作为标签
+//	    CustomKeyNotes:  "notes",  // 以该json tag字段作为备注
+//	  }
+//	  v: 可以为 *string,*[]byte,*[]Nodes{} 这几种类型
+//	  genId: 外部自定义生成id方案,自动生成的id是参照xmind,可能有点长
+//	return
+//	  error: 返回错误
 func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 	genId func(id TopicID) string) error {
 	cent := sheet.On(CentKey)

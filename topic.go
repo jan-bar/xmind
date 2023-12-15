@@ -537,6 +537,7 @@ func (st *Topic) AddHref(href string) *Topic {
 	return st
 }
 
+const folded = "folded"
 // Folded 收缩主题
 //
 //	param
@@ -544,8 +545,6 @@ func (st *Topic) AddHref(href string) *Topic {
 //	return
 //	  *Topic: 当前主题地址
 func (st *Topic) Folded(all ...bool) *Topic {
-	const folded = "folded"
-
 	st.Branch = folded
 	if len(all) > 0 && all[0] {
 		_ = st.Range(func(_ int, topic *Topic) error {

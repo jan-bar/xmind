@@ -69,6 +69,12 @@ func (wk *WorkBook) SaveToMarkdown(w io.Writer, format map[string]string) error 
 			if current.Notes != nil && current.Notes.Plain.Content != "" {
 				data[CustomKeyNotes] = current.Notes.Plain.Content
 			}
+			if current.Branch != "" {
+				data[CustomKeyBranch] = current.Branch
+			}
+			if current.Href != "" {
+				data[CustomKeyHref] = current.Href
+			}
 
 			tw := tpl.Lookup(strconv.Itoa(deep))
 			if tw == nil {
