@@ -363,7 +363,7 @@ func (st *Topic) RemoveByID(componentId TopicID) *Topic {
 		topic.Children.Attached = topic.Children.Attached[:cur]
 	}
 	// 存在删除时,需要切换到中心主题上,避免在已删除节点执行后续逻辑
-	return st.On(CentKey)
+	return st.On()
 }
 
 // RemoveChildren 递归删除所有子节点

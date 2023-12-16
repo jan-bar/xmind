@@ -25,7 +25,7 @@ func (wk *WorkBook) SaveToMarkdown(w io.Writer, format map[string]string) error 
 
 	tpl, err := template.New(DefaultMarkdownName).Funcs(template.FuncMap{
 		"Repeat": strings.Repeat, // 注册用到的方法
-		"SplitLines": func(s interface{}, sep string) []string {
+		"SplitLines": func(s any, sep string) []string {
 			switch ss := s.(type) {
 			case string:
 				return strings.FieldsFunc(ss, func(r rune) bool {
@@ -53,13 +53,13 @@ func (wk *WorkBook) SaveToMarkdown(w io.Writer, format map[string]string) error 
 	}
 
 	for _, tp := range wk.Topics {
-		cent := tp.On(CentKey)
-		if cent == nil {
+		cent := tp.On()
+		if !cent.IsCent() {
 			return RootIsNull
 		}
 
 		err = cent.Range(func(deep int, current *Topic) error {
-			data := map[string]interface{}{
+			data := map[string]any{
 				MarkdownKeyDeep: deep,
 				CustomKeyTitle:  current.Title,
 			}

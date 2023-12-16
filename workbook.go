@@ -34,7 +34,7 @@ func LoadFile(path string) (*WorkBook, error) {
 }
 
 // LoadFrom 从文件或io.Reader对象中加载xmind
-func LoadFrom(input interface{}) (*WorkBook, error) {
+func LoadFrom(input any) (*WorkBook, error) {
 	var (
 		read interface {
 			io.ReaderAt
@@ -75,11 +75,13 @@ func LoadFrom(input interface{}) (*WorkBook, error) {
 				continue // 剔除不合法的数据
 			}
 
+			incr := 0
 			topic.RootTopic.parent = topic
 			topic.RootTopic.resources = map[TopicID]*Topic{
 				rootKey: topic,
 				CentKey: topic.RootTopic,
 				lastKey: topic.RootTopic,
+				incrKey: {incr: &incr},
 			}
 			topic.resources = topic.RootTopic.resources
 			// 准备初始化数据,从中心主题开始更新所有子节点数据
@@ -188,7 +190,7 @@ const (
 //	return
 //	  *Topic: 生成的主题地址
 //	  error: 返回错误
-func LoadCustom(data interface{}, custom map[string]string) (sheet *Topic, err error) {
+func LoadCustom(data any, custom map[string]string) (sheet *Topic, err error) {
 	var byteData []byte
 	switch td := data.(type) {
 	case string:
@@ -382,15 +384,15 @@ var RootIsNull = errors.New("RootTopic is null")
 //	  genId: 外部自定义生成id方案,自动生成的id是参照xmind,可能有点长
 //	return
 //	  error: 返回错误
-func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
+func SaveCustom(sheet *Topic, custom map[string]string, v any,
 	genId func(id TopicID) string) error {
-	cent := sheet.On(CentKey)
-	if cent == nil {
+	cent := sheet.On()
+	if !cent.IsCent() {
 		return RootIsNull
 	}
 
 	var (
-		buf   strings.Builder
+		buf   bytes.Buffer
 		quote = make([]byte, 0, 128)
 		rk    = 0
 	)
@@ -411,6 +413,8 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 		parentKey = custom[CustomKeyParentId]
 		labelsKey = custom[CustomKeyLabels]
 		notesKey  = custom[CustomKeyNotes]
+		branchKey = custom[CustomKeyBranch]
+		hrefKey   = custom[CustomKeyHref]
 	)
 	parentKey, _, ok = strings.Cut(parentKey, ",")
 
@@ -475,6 +479,16 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 		}
 
 		buf.WriteString(`,"`)
+		buf.WriteString(branchKey)
+		buf.WriteString(`":`) // 添加折叠状态
+		buf.Write(strconv.AppendQuote(quote[:0], tp.Branch))
+
+		buf.WriteString(`,"`)
+		buf.WriteString(hrefKey)
+		buf.WriteString(`":`) // 添加超链接
+		buf.Write(strconv.AppendQuote(quote[:0], tp.Href))
+
+		buf.WriteString(`,"`)
 		buf.WriteString(labelsKey)
 		buf.WriteString(`":[`) // 添加标签
 		for i, vl := range tp.Labels {
@@ -487,16 +501,15 @@ func SaveCustom(sheet *Topic, custom map[string]string, v interface{},
 		return nil
 	})
 	buf.WriteByte(']')
-	str := buf.String()
 
 	// 根据不同类型设置数据
 	switch vt := v.(type) {
 	case *string:
-		*vt = str
+		*vt = buf.String()
 	case *[]byte:
-		*vt = []byte(str)
+		*vt = buf.Bytes()
 	default:
-		return json.Unmarshal([]byte(str), v)
+		return json.Unmarshal(buf.Bytes(), v)
 	}
 	return nil
 }

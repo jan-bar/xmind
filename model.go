@@ -41,7 +41,7 @@ type (
 	TopicID string
 
 	Style struct {
-		Properties interface{} `json:"properties"`
+		Properties any `json:"properties"`
 		Id         TopicID     `json:"id"`
 		Type       string      `json:"type"`
 	}
@@ -119,11 +119,10 @@ func GetId() TopicID {
 func (t TopicID) IsOrdinary() bool { return len(t) == topicIdDstLen }
 
 func (t TopicID) MarshalJSON() ([]byte, error) {
-	id := t
-	if len(id) != topicIdDstLen {
-		id = GetId()
+	if t.IsOrdinary() {
+		return []byte(`"` + t + `"`), nil
 	}
-	return []byte(`"` + id + `"`), nil
+	return []byte(`"` + GetId() + `"`), nil
 }
 
 // CustomIncrId 自定义生成自增数字id方案
