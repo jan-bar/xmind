@@ -149,6 +149,22 @@ const (
 	CustomKeyHref     = "Href"
 )
 
+func fillCustom(custom map[string]string) map[string]string {
+	if len(custom) == 0 {
+		custom = make(map[string]string)
+	}
+
+	for _, v := range []string{CustomKeyId, CustomKeyTitle, CustomKeyParentId,
+		CustomKeyLabels, CustomKeyNotes, CustomKeyBranch, CustomKeyHref} {
+		if _, ok := custom[v]; !ok {
+			// 没有传的参数填充默认值,tag标签用小写
+			custom[v] = strings.ToLower(v)
+		}
+	}
+
+	return custom
+}
+
 // LoadCustom 根据符合要求的任意结构加载
 //
 //	param
@@ -203,6 +219,8 @@ func LoadCustom(data any, custom map[string]string) (sheet *Topic, err error) {
 			return
 		}
 	}
+
+	custom = fillCustom(custom)
 
 	strType := reflect.TypeOf("")
 	stuField := []reflect.StructField{
@@ -396,6 +414,7 @@ func SaveCustom(sheet *Topic, custom map[string]string, v any,
 		quote = make([]byte, 0, 128)
 		rk    = 0
 	)
+	custom = fillCustom(custom)
 
 	isRootKey, ok := custom[CustomKeyIsRoot]
 	if ok {
